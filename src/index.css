@@ -1,0 +1,137 @@
+@font-face {
+  font-family: 'Block Berthold';
+  src: url('/fonts/Block Berthold Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/montserrat-v31-latin-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/montserrat-v31-latin-800.woff2') format('woff2');
+  font-weight: 700 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Colors */
+  --navy-darkest: #001133;
+  --navy-dark: #1E2B5F;
+  --blue-medium: #042A80;
+  --green: #398032;
+  --green-shadow: rgba(57, 128, 50, 0.3);
+  --purple: #7C0770;
+  --sky: #5FCAE7;
+  --surface: #FFFFFF;
+  --background: #F7F8FA;
+  --border: #EAECF0;
+  --text-primary: #0D1117;
+  --text-secondary: #5A6272;
+  --text-muted: #9CA3AF;
+
+  /* Typography */
+  --font-display: 'Block Berthold', serif;
+  --font-ui: 'Montserrat', system-ui, sans-serif;
+
+  /* Spacing */
+  --notch: env(safe-area-inset-top, 52px);
+  --tab-bar-height: 64px;
+  --tab-bar-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-weight: 400;
+  background: var(--background);
+  color: var(--text-primary);
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--background);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* Screen container — fills space between top and tab bar */
+.screen {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Sticky headers */
+.screen-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding-top: max(52px, env(safe-area-inset-top, 52px));
+}
+
+/* Spinner */
+.spinner-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
