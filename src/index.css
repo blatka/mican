@@ -112,7 +112,7 @@ img {
   z-index: 10;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding-top: max(52px, env(safe-area-inset-top, 52px));
+  padding-top: max(10px, env(safe-area-inset-top, 10px));
 }
 
 /* Spinner */
