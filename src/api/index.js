@@ -8,30 +8,39 @@ async function get(path, params = {}) {
   return res.json()
 }
 
-// ── Sessions ──────────────────────────────────────────────────────────────
-export async function fetchSession(id) {
-  return get(`/sessions/${id}`)
+// Promise cache — keyed fetches are shared across mounts so navigating back is instant
+const _pc = new Map()
+function pcache(key, fn) {
+  if (!_pc.has(key)) _pc.set(key, fn())
+  return _pc.get(key)
 }
 
-export async function fetchSessions() {
-  const data = await get('/sessions', { per_page: 100 })
-  return data
-    .filter(s => s.acf?.session_time_start && (s.session_tracks?.length > 0 || s.acf?.session_type === 'break'))
-    .sort((a, b) => {
-      const da = a.acf.session_date ?? ''
-      const db = b.acf.session_date ?? ''
-      if (da !== db) return da.localeCompare(db)
-      const ta = a.acf.session_time_start ?? ''
-      const tb = b.acf.session_time_start ?? ''
-      return ta.localeCompare(tb)
-    })
+// ── Sessions ──────────────────────────────────────────────────────────────
+export function fetchSession(id) {
+  return pcache(`session:${id}`, () => get(`/sessions/${id}`))
+}
+
+export function fetchSessions() {
+  return pcache('sessions', async () => {
+    const data = await get('/sessions', { per_page: 100 })
+    return data
+      .filter(s => s.acf?.session_time_start && (s.session_tracks?.length > 0 || s.acf?.session_type === 'break'))
+      .sort((a, b) => {
+        const da = a.acf.session_date ?? ''
+        const db = b.acf.session_date ?? ''
+        if (da !== db) return da.localeCompare(db)
+        const ta = a.acf.session_time_start ?? ''
+        const tb = b.acf.session_time_start ?? ''
+        return ta.localeCompare(tb)
+      })
+  })
 }
 
 // ── People ────────────────────────────────────────────────────────────────
-export async function fetchPeople(ids) {
-  if (!ids || ids.length === 0) return []
-  const data = await get('/people', { include: ids.join(','), per_page: 100 })
-  return data
+export function fetchPeople(ids) {
+  if (!ids || ids.length === 0) return Promise.resolve([])
+  const key = 'people:' + [...ids].sort().join(',')
+  return pcache(key, () => get('/people', { include: ids.join(','), per_page: 100 }))
 }
 
 export async function fetchPerson(id) {
@@ -87,26 +96,27 @@ export async function fetchSponsorships() {
 }
 
 // ── Organizations ─────────────────────────────────────────────────────────
-export async function fetchOrganization(id) {
-  return get(`/organizations/${id}`, { _fields: 'id,title,featured_media,meta' })
+export function fetchOrganization(id) {
+  return pcache(`org:${id}`, () => get(`/organizations/${id}`, { _fields: 'id,title,featured_media,meta' }))
 }
 
-export async function fetchOrganizations(ids) {
-  if (!ids || ids.length === 0) return []
-  return get('/organizations', {
+export function fetchOrganizations(ids) {
+  if (!ids || ids.length === 0) return Promise.resolve([])
+  const key = 'orgs:' + [...ids].sort().join(',')
+  return pcache(key, () => get('/organizations', {
     include: ids.join(','),
     per_page: 100,
     _fields: 'id,title,featured_media,meta',
-  })
+  }))
 }
 
 // ── Sponsor Ads ───────────────────────────────────────────────────────────
-export async function fetchSponsorAds() {
-  return get('/sponsor-ads', { per_page: 100 })
+export function fetchSponsorAds() {
+  return pcache('sponsor-ads', () => get('/sponsor-ads', { per_page: 100 }))
 }
 
-export async function fetchSponsorAd(id) {
-  return get(`/sponsor-ads/${id}`)
+export function fetchSponsorAd(id) {
+  return pcache(`sponsor-ad:${id}`, () => get(`/sponsor-ads/${id}`))
 }
 
 // ── JetEngine Relations ───────────────────────────────────────────────────
@@ -130,8 +140,8 @@ async function getRel(path) {
 
 // Relation 21: Organizations (parent) ↔ Sponsorships (children, many-to-many)
 // Returns { [orgId]: [{ child_object_id: sponsorshipId }] }
-export async function fetchOrgSponsorshipRelations() {
-  return getRel('/21')
+export function fetchOrgSponsorshipRelations() {
+  return pcache('org-sponsorship-rels', () => getRel('/21'))
 }
 
 // Children of org (sponsorships): GET /21/children/{orgId}

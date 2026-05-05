@@ -12,6 +12,9 @@ import { SPONSORSHIP_TIERS } from '../constants/sponsors.js'
 
 const NONPROFIT_TIER_ID = 8979
 
+// Module-level store — survives navigation, cleared only on full page reload
+const _cache = {}
+
 function SpeakerCard({ person, photoUrl, track }) {
   const [expanded, setExpanded] = useState(false)
   const name = person.title?.rendered ?? ''
@@ -80,17 +83,20 @@ export default function SessionDetailScreen() {
   const navigate = useNavigate()
   const { isBookmarked, toggle } = useBookmarks()
 
-  const [session, setSession] = useState(null)
-  const [speakers, setSpeakers] = useState([])
-  const [speakerPhotos, setSpeakerPhotos] = useState({})
-  const [ad, setAd] = useState(null)
-  const [adImageUrl, setAdImageUrl] = useState(null)
-  const [adOrgId, setAdOrgId] = useState(null)
-  const [adDetailPage, setAdDetailPage] = useState(false)
-  const [nonprofits, setNonprofits] = useState([])
-  const [loading, setLoading] = useState(true)
+  const hit = _cache[id]
+  const [session, setSession] = useState(hit?.session ?? null)
+  const [speakers, setSpeakers] = useState(hit?.speakers ?? [])
+  const [speakerPhotos, setSpeakerPhotos] = useState(hit?.speakerPhotos ?? {})
+  const [ad, setAd] = useState(hit?.ad ?? null)
+  const [adImageUrl, setAdImageUrl] = useState(hit?.adImageUrl ?? null)
+  const [adOrgId, setAdOrgId] = useState(hit?.adOrgId ?? null)
+  const [adDetailPage, setAdDetailPage] = useState(hit?.adDetailPage ?? false)
+  const [nonprofits, setNonprofits] = useState(hit?.nonprofits ?? [])
+  const [loading, setLoading] = useState(!hit)
 
   useEffect(() => {
+    if (_cache[id]) return // already loaded for this session
+
     async function load() {
       try {
         // Phase 1: session + ads + nonprofit orgs in parallel (no bulk tier fetches)
@@ -113,17 +119,17 @@ export default function SessionDetailScreen() {
         // Pick a random paid ad, then look up its tier with one targeted jet-rel call
         const paidAds = Object.entries(adsByOrg)
         let pickedAd = null
-        let adOrgId = null
-        let adDetailPage = false
+        let pickedAdOrgId = null
+        let pickedAdDetailPage = false
         if (paidAds.length > 0) {
           const [orgIdStr, ad] = paidAds[Math.floor(Math.random() * paidAds.length)]
           pickedAd = ad
-          adOrgId = Number(orgIdStr)
+          pickedAdOrgId = Number(orgIdStr)
           try {
-            const sponsorships = await fetchSponsorshipsByOrg(adOrgId)
+            const sponsorships = await fetchSponsorshipsByOrg(pickedAdOrgId)
             for (const s of (sponsorships ?? [])) {
               const tier = SPONSORSHIP_TIERS[Number(s.child_object_id)]
-              if (tier?.weight) { adDetailPage = tier.detailPage ?? false; break }
+              if (tier?.weight) { pickedAdDetailPage = tier.detailPage ?? false; break }
             }
           } catch { /* use defaults */ }
         }
@@ -146,26 +152,38 @@ export default function SessionDetailScreen() {
         ]
         const mediaMap = allMediaIds.length > 0 ? await fetchMediaUrls(allMediaIds) : {}
 
-        // Set speaker photos
         const photos = {}
         speakerPhotoIds.forEach(pid => { photos[pid] = mediaMap[pid] ?? null })
-        setSpeakerPhotos(photos)
 
-        // Set ad
-        if (pickedAd) {
-          setAd(pickedAd)
-          setAdOrgId(adOrgId)
-          setAdDetailPage(adDetailPage)
-          if (adImageId) setAdImageUrl(mediaMap[adImageId] ?? null)
-        }
-
-        // Set nonprofits with resolved logos
-        setNonprofits(pickedNonprofits.map(o => ({
+        const resolvedNonprofits = pickedNonprofits.map(o => ({
           id: o.id,
           name: decodeHtml(o.title?.rendered),
           logoUrl: o.featured_media ? (mediaMap[o.featured_media] ?? null) : null,
           websiteUrl: o.meta?.organization_link ?? null,
-        })))
+        }))
+
+        const resolvedAdImageUrl = adImageId ? (mediaMap[adImageId] ?? null) : null
+
+        // Store everything in module cache before setting state
+        _cache[id] = {
+          session: sessionData,
+          speakers: people,
+          speakerPhotos: photos,
+          ad: pickedAd,
+          adImageUrl: resolvedAdImageUrl,
+          adOrgId: pickedAdOrgId,
+          adDetailPage: pickedAdDetailPage,
+          nonprofits: resolvedNonprofits,
+        }
+
+        setSpeakerPhotos(photos)
+        if (pickedAd) {
+          setAd(pickedAd)
+          setAdOrgId(pickedAdOrgId)
+          setAdDetailPage(pickedAdDetailPage)
+          setAdImageUrl(resolvedAdImageUrl)
+        }
+        setNonprofits(resolvedNonprofits)
 
       } catch (e) {
         console.warn('SessionDetail load failed:', e)
