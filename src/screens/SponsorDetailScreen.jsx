@@ -126,8 +126,8 @@ export default function SponsorDetailScreen() {
 const styles = {
   gradientHeader: {
     background: 'linear-gradient(135deg, #1E2B5F, #042A80)',
-    paddingTop: 'max(52px, env(safe-area-inset-top, 52px))',
-    padding: 'max(52px, env(safe-area-inset-top, 52px)) 24px 28px',
+    paddingTop: 'max(10px, env(safe-area-inset-top, 10px))',
+    padding: 'max(10px, env(safe-area-inset-top, 10px)) 24px 28px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -137,7 +137,7 @@ const styles = {
   },
   backBtn: {
     position: 'absolute',
-    top: 'max(52px, env(safe-area-inset-top, 52px))',
+    top: 'max(10px, env(safe-area-inset-top, 10px))',
     left: 16,
     display: 'inline-flex',
     alignItems: 'center',
