@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MiCAN Summit App</title>
+<link href="https://fonts.googleapis.com/css2?family=Londrina+Solid&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<style>
+@font-face { font-family:"Block Berthold"; src:url("fonts/BlockBerthold-Regular.woff2") format("woff2"); font-weight:400; }
+@font-face { font-family:"Montserrat"; src:url("fonts/Montserrat-Regular.woff2") format("woff2"); font-weight:400; }
+@font-face { font-family:"Montserrat"; src:url("fonts/Montserrat-Bold.woff2") format("woff2"); font-weight:700; }
+@font-face { font-family:"Montserrat"; src:url("fonts/Montserrat-ExtraBold.woff2") format("woff2"); font-weight:800; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body,#root { height:100%; }
+body { background:#E8EAF0; font-family:"Montserrat",sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+/* ── TOKENS ── */
+const T = {
+  bg: "#F7F8FA",
+  surface: "#FFFFFF",
+  border: "#EAECF0",
+  navy: "#001133",
+  navyMid: "#1E2B5F",
+  green: "#398032",
+  purple: "#7C0770",
+  sky: "#5FCAE7",
+  textPrimary: "#0D1117",
+  textSecondary: "#5A6272",
+  textMuted: "#9CA3AF",
+};
+
+const TRACK_COLORS = {
+  "Courage of Our Convictions":          { bg:"#EEF2FF", text:"#1E2B5F", dot:"#1E2B5F" },
+  "Practicing Courage":                  { bg:"#ECFCE5", text:"#286325", dot:"#398032" },
+  "Powering the Network":                { bg:"#F5E8FF", text:"#5B0A52", dot:"#7C0770" },
+  "Art/Collective Courage":              { bg:"#FFF4E0", text:"#8B5E04", dot:"#D97706" },
+  "Community Climate Action Fellowship": { bg:"#E0F7FA", text:"#0E6E88", dot:"#0891B2" },
+};
+
+/* ── DATA ── */
+const SESSIONS = [
+  { id:1, title:"Opening Keynote: Michigan's Clean Energy Roadmap", track:"Courage of Our Convictions", time:"9:00 – 10:00 AM", room:"Big Ten ABC", speaker:{ name:"Gov. Gretchen Whitmer", bio:"Governor Whitmer has championed climate legislation in Michigan since 2019, passing landmark clean energy standards in 2023." }, description:"Join Governor Whitmer for an inspiring overview of Michigan's path to 100% clean energy by 2040, the policy wins of the past year, and what's ahead.", slido:"https://slido.com/mican2025" },
+  { id:2, title:"Community Solar: Who Gets Left Behind?", track:"Practicing Courage", time:"10:30 – 11:30 AM", room:"Lincoln", speaker:{ name:"Dr. Amara Osei", bio:"Environmental justice researcher at U of M, focusing on equitable clean energy transition in low-income communities." }, description:"A deep dive into the equity gaps in Michigan's community solar rollout and actionable steps for advocates.", slido:null },
+  { id:3, title:"Youth Climate Organizing — Building Power", track:"Community Climate Action Fellowship", time:"10:30 – 11:30 AM", room:"Red Cedar AB", speaker:{ name:"Kira Delgado", bio:"Co-founder of Michigan Youth Climate Coalition, organizer of the 2024 Capitol rally." }, description:"Hear from young organizers who've built coalitions of thousands. Learn their tactics, tools, and what makes youth climate campaigns succeed.", slido:"https://slido.com/youth" },
+  { id:4, title:"Clean Energy Workforce: Jobs of the Future", track:"Powering the Network", time:"1:00 – 2:00 PM", room:"103AB - 105AB", speaker:{ name:"Marcus Webb", bio:"VP of Workforce at Michigan Economic Development Corp., leading green jobs initiative." }, description:"How Michigan is building the workforce for wind, solar, and storage — and what advocates need to know to connect communities to these opportunities.", slido:null },
+  { id:5, title:"Tribal Nations & Great Lakes Climate Resilience", track:"Courage of Our Convictions", time:"1:00 – 2:00 PM", room:"Big Ten ABC", speaker:{ name:"Elder Rose Thunder", bio:"Environmental spokesperson for the Anishinaabe Caucus and Great Lakes water protector." }, description:"Tribal nations are on the front lines. Hear firsthand accounts and policy proposals from Indigenous leaders protecting Michigan's water and land.", slido:"https://slido.com/tribal" },
+  { id:6, title:"Line 5 & The Fight for Our Waters", track:"Practicing Courage", time:"2:30 – 3:30 PM", room:"Willy", speaker:{ name:"Jordan Park", bio:"Senior attorney at Earthjustice, lead counsel on the Line 5 tunnel litigation." }, description:"An honest legal and political assessment of where the Line 5 fight stands, what the tunnel approval means, and what comes next for advocates.", slido:null },
+  { id:7, title:"Art as Resistance: Climate Storytelling", track:"Art/Collective Courage", time:"2:30 – 3:30 PM", room:"Nook 106", speaker:{ name:"Tanya Rivers", bio:"Artist and activist whose large-scale murals have appeared at climate rallies across the Midwest." }, description:"How art and storytelling build the emotional case for climate action.", slido:null },
+  { id:8, title:"Closing Panel: What Victory Looks Like", track:"Courage of Our Convictions", time:"4:00 – 5:00 PM", room:"Big Ten ABC", speaker:{ name:"Panel of 5", bio:"Five movement leaders share what winning on climate looks like in their communities." }, description:"Closing the summit with a forward-looking panel on coalition strategy, political pressure, and hope.", slido:"https://slido.com/closing" },
+];
+
+const SPONSORS = [
+  { id:"mff",    tier:"Climate Innovator", name:"Michigan's Future Foundation", tagline:"Powering Michigan's Clean Future",                         logo:"assets/sponsor-logo-square.png", cta:"Learn More", color:"#1E2B5F", website:"#",
+    initiative:"Michigan Clean Energy Futures Fund",
+    blurb:"Michigan's Future Foundation is investing $50 million over five years to accelerate the clean energy transition in underserved Michigan communities. The Clean Energy Futures Fund provides direct grants to local organizations building solar cooperatives, weatherization programs, and energy efficiency initiatives across the state.",
+    blurb2:"Since 2021, the Foundation has partnered with over 80 community organizations, trained 1,200 clean energy workers, and helped Michigan families save an average of $640 annually on energy costs.",
+    blurb3:"Our work centers equity, ensuring that the benefits of Michigan's clean energy economy reach every zip code, not just those who can afford it.",
+    photo:"assets/energy-climate-change.jpg" },
+  { id:"circle", tier:"Planet Protector",   name:"Circle Recycling",              tagline:"Keeping Michigan's Materials in Motion",                    logo:"assets/circle-logo.png",         cta:"Visit Website", color:"#286325", website:"#",
+    adBlurbs:["Circle's Michigan Circular Materials Initiative keeps plastics and organics out of landfills by connecting communities with accessible drop-off and curbside recycling programs across the state.","Through partnerships with over 60 Michigan municipalities, Circle has diverted more than 18,000 tons of material from landfills since 2022, making recycling simpler, cleaner, and more equitable for every Michigan household."] },
+  { id:"gf",     tier:"Community Pillar",   name:"GreenFaith Communities",        tagline:"Protecting Creation Across Michigan",                        logo:"assets/greenfaith-logo.png",    cta:"Join Us",       color:"#5B0A52", website:"#",
+    adBlurbs:["GreenFaith Communities unites people of faith across Michigan to protect creation, advocating for clean air, clean water, and a just energy transition rooted in our shared moral responsibility to care for the earth and one another."] },
+  { id:"aapp",   tier:"Nonprofit Partner",  name:"Ann Arbor for Public Power",    tagline:"Renewable, Reliable, Affordable Electricity for Ann Arbor",  logo:"assets/ann-arbor-public-power.png", cta:"Visit Website", color:"#0E6E88", website:"https://annarborpublicpower.org/" },
+];
+const TIER_ORDER = ["Climate Innovator", "Planet Protector", "Community Pillar", "Nonprofit Partner"];
+
+/* ── SMALL COMPONENTS ── */
+
+const TrackBadge = ({ track, size = "sm" }) => {
+  const c = TRACK_COLORS[track] || { bg:"#F3F4F6", text:"#4B5563", dot:"#9CA3AF" };
+  const fs = size === "sm" ? 10 : 12;
+  return (
+    <span style={{ display:"inline-flex", alignItems:"center", gap:4, background:c.bg, color:c.text, fontWeight:700, fontSize:fs, padding:"3px 8px", borderRadius:20, letterSpacing:"0.02em", whiteSpace:"nowrap" }}>
+      <span style={{ width:6, height:6, borderRadius:"50%", background:c.dot, flexShrink:0 }}></span>
+      {track}
+    </span>
+  );
+};
+
+const BookmarkBtn = ({ active, onToggle }) => (
+  <button onClick={e => { e.stopPropagation(); onToggle(); }} style={{ background:"none", border:"none", cursor:"pointer", padding:0, display:"flex", alignItems:"center", lineHeight:1 }}>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? T.green : "none"} stroke={active ? T.green : T.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+    </svg>
+  </button>
+);
+
+const SponsorCard = ({ sponsor, compact = false, onTap }) => (
+  <div onClick={onTap} style={{ background:"#fff", border:`1px solid ${T.border}`, borderRadius:12, padding: compact ? "14px 16px" : "20px 20px", margin:"8px 0", position:"relative", cursor: onTap ? "pointer" : "default" }}>
+    <div style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:"uppercase", letterSpacing:"0.08em", textAlign:"center", marginBottom:10 }}>Climate Innovator Sponsor</div>
+    <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom: compact ? 0 : 10 }}>
+      <div style={{ width:44, height:44, borderRadius:8, background:"#E8EAF0", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, overflow:"hidden" }}>
+        <img src="assets/sponsor-logo-square.png" alt="sponsor" style={{ width:44, height:44, objectFit:"cover" }} />
+      </div>
+      <div>
+        <div style={{ fontWeight:700, fontSize:13, color:T.textPrimary, lineHeight:1.3 }}>{sponsor.name}</div>
+        {!compact && <div style={{ fontSize:12, color:T.textSecondary, marginTop:2 }}>{sponsor.tagline}</div>}
+      </div>
+    </div>
+    {!compact && (
+      <button style={{ width:"100%", marginTop:12, padding:"10px", background:sponsor.color, color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:700, cursor:"pointer", letterSpacing:"0.02em" }}>{sponsor.cta} →</button>
+    )}
+  </div>
+);
+
+const SessionCard = ({ session, onTap, saved, onBookmark }) => (
+  <div onClick={() => onTap(session)} style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:14, padding:"12px 14px", marginBottom:10, cursor:"pointer", boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
+    {/* Line 1: time left, track badge right */}
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+      <span style={{ fontSize:11, fontWeight:700, color:T.textSecondary, display:"flex", alignItems:"center", gap:3 }}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        {session.time}
+      </span>
+      <TrackBadge track={session.track} />
+    </div>
+    {/* Line 2: session title */}
+    <div style={{ fontWeight:700, fontSize:14, color:T.textPrimary, lineHeight:1.35, marginBottom:5 }}>{session.title}</div>
+    {/* Line 3: room left, bookmark right */}
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <span style={{ fontSize:11, color:T.textSecondary, display:"flex", alignItems:"center", gap:3 }}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        {session.room}
+      </span>
+      <BookmarkBtn active={saved} onToggle={onBookmark} />
+    </div>
+  </div>
+);
+
+/* ── SCREEN 1: HOME ── */
+const HomeScreen = ({ goTo, onSponsorTap }) => {
+  const sponsor = SPONSORS[0];
+  return (
+    <div style={{ height:"100%", background:T.bg, display:"flex", flexDirection:"column", overflowY:"auto" }}>
+      {/* Hero */}
+      <div style={{ background:T.bg, flexShrink:0, paddingTop:52 }}>
+        <img src="assets/summit-hero.png" alt="2026 Michigan Climate Summit — Collective Courage" style={{ width:"100%", display:"block" }} />
+      </div>
+
+      {/* Big CTAs */}
+      <div style={{ padding:"24px 20px 8px", display:"flex", flexDirection:"column", gap:12, flexShrink:0 }}>
+        <button onClick={() => goTo("schedule")} style={{ width:"100%", padding:"18px", background:T.green, color:"#fff", border:"none", borderRadius:14, fontSize:16, fontWeight:800, cursor:"pointer", letterSpacing:"0.01em", display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:"0 4px 16px rgba(57,128,50,0.3)" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          View Schedule
+        </button>
+        <button onClick={() => goTo("map")} style={{ width:"100%", padding:"18px", background:T.navyMid, color:"#fff", border:"none", borderRadius:14, fontSize:16, fontWeight:800, cursor:"pointer", letterSpacing:"0.01em", display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Venue Map
+        </button>
+      </div>
+
+      {/* Sponsor showcase */}
+      <div style={{ padding:"16px 20px", flex:1 }}>
+        <div style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:10, textAlign:"center" }}>Climate Innovator Sponsor</div>
+        <div onClick={onSponsorTap} style={{ background:T.surface, borderRadius:16, overflow:"hidden", border:`1px solid ${T.border}`, boxShadow:"0 2px 12px rgba(0,0,0,0.06)", cursor:"pointer" }}>
+          <div style={{ background:`linear-gradient(135deg, #1E2B5F 0%, #042A80 100%)`, padding:"24px 20px 20px", textAlign:"center" }}>
+            <img src="assets/sponsor-temp-logo.png" alt="sponsor" style={{ height:44, marginBottom:12, objectFit:"contain" }} />
+            <div style={{ fontSize:17, fontWeight:800, color:"#fff", marginBottom:4 }}>{sponsor.name}</div>
+            <div style={{ fontSize:13, color:"rgba(255,255,255,0.75)" }}>{sponsor.tagline}</div>
+          </div>
+          <div style={{ padding:"16px 20px" }}>
+            <button style={{ width:"100%", padding:"13px", background:sponsor.color, color:"#fff", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer" }}>{sponsor.cta} →</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ textAlign:"center", padding:"12px 0 20px", flexShrink:0 }}>
+        <img src="assets/mican-logo-bug.png" alt="" style={{ height:18, opacity:0.3, marginBottom:4, display:"block", margin:"0 auto 4px" }} />
+        <div style={{ fontSize:11, color:T.textMuted }}>Powered by MiCAN</div>
+      </div>
+    </div>
+  );
+};
+
+/* ── SCREEN 2: SCHEDULE ── */
+const ScheduleScreen = ({ goTo, saved, toggleSave, onSponsorTap }) => {
+  const [filter, setFilter] = useState("All");
+  const [activeTrack, setActiveTrack] = useState(null);
+  const filters = ["All", "By Track", "By Time", "My Schedule"];
+
+  const filtered = SESSIONS.filter(s => {
+    if (filter === "My Schedule") return saved.has(s.id);
+    if (filter === "By Track" && activeTrack) return s.track === activeTrack;
+    return true;
+  });
+
+  // Group by time if By Time
+  const byTime = filter === "By Time"
+    ? [...new Set(SESSIONS.map(s => s.time))].map(t => ({ time:t, sessions:filtered.filter(s=>s.time===t) })).filter(g=>g.sessions.length)
+    : null;
+
+  // Insert sponsor ads every 3 sessions
+  const withAds = [];
+  filtered.forEach((s, i) => {
+    withAds.push({ type:"session", data:s });
+    if ((i+1) % 3 === 0 && i < filtered.length - 1) {
+      withAds.push({ type:"ad", data:SPONSORS[Math.floor(i/3) % SPONSORS.length] });
+    }
+  });
+
+  return (
+    <div style={{ height:"100%", background:T.bg, display:"flex", flexDirection:"column" }}>
+      {/* Header */}
+      <div style={{ background:T.surface, borderBottom:`1px solid ${T.border}`, padding:"52px 20px 0", flexShrink:0 }}>
+
+        {/* Filter tabs */}
+        <div style={{ display:"flex", gap:0, overflowX:"auto", marginBottom:-1, scrollbarWidth:"none" }}>
+          {filters.map(f => (
+            <button key={f} onClick={() => { setFilter(f); setActiveTrack(null); }} style={{ flexShrink:0, padding:"8px 14px", fontSize:13, fontWeight:700, color: filter===f ? T.green : T.textSecondary, background:"none", border:"none", borderBottom: filter===f ? `2.5px solid ${T.green}` : "2.5px solid transparent", cursor:"pointer", whiteSpace:"nowrap" }}>{f}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Track filter pills (when By Track) */}
+      {filter === "By Track" && (
+        <div style={{ background:T.surface, padding:"10px 16px", borderBottom:`1px solid ${T.border}`, display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none", flexShrink:0 }}>
+          {Object.keys(TRACK_COLORS).map(t => (
+            <button key={t} onClick={() => setActiveTrack(activeTrack===t ? null : t)} style={{ flexShrink:0, padding:"6px 12px", borderRadius:20, fontSize:11, fontWeight:700, border:`1.5px solid ${activeTrack===t ? TRACK_COLORS[t].dot : T.border}`, background: activeTrack===t ? TRACK_COLORS[t].bg : T.surface, color: activeTrack===t ? TRACK_COLORS[t].text : T.textSecondary, cursor:"pointer" }}>{t}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Session list */}
+      <div style={{ flex:1, overflowY:"auto", padding:"12px 16px" }}>
+        {filter === "My Schedule" && saved.size === 0 && (
+          <div style={{ textAlign:"center", padding:"60px 24px", color:T.textMuted }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="1.5" style={{ margin:"0 auto 12px", display:"block" }}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            <div style={{ fontSize:14, fontWeight:600 }}>No saved sessions yet</div>
+            <div style={{ fontSize:13, marginTop:6 }}>Tap the bookmark icon on any session to save it here.</div>
+          </div>
+        )}
+        {byTime ? byTime.map(group => (
+          <div key={group.time}>
+            <div style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:"uppercase", letterSpacing:"0.08em", padding:"6px 0 8px" }}>{group.time}</div>
+            {group.sessions.map(s => <SessionCard key={s.id} session={s} onTap={() => goTo("detail", s)} saved={saved.has(s.id)} onBookmark={() => toggleSave(s.id)} />)}
+          </div>
+        )) : withAds.map((item, i) =>
+          item.type === "session"
+            ? <SessionCard key={item.data.id} session={item.data} onTap={() => goTo("detail", item.data)} saved={saved.has(item.data.id)} onBookmark={() => toggleSave(item.data.id)} />
+            : <SponsorCard key={`ad-${i}`} sponsor={item.data} compact={false} onTap={onSponsorTap} />
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ── SCREEN 3: SESSION DETAIL ── */
+const DetailScreen = ({ session, goBack, saved, toggleSave, onSponsorTap }) => {
+  const tc = TRACK_COLORS[session.track] || {};
+  return (
+    <div style={{ height:"100%", background:T.bg, display:"flex", flexDirection:"column" }}>
+      {/* Top bar */}
+      <div style={{ background:T.surface, borderBottom:`1px solid ${T.border}`, padding:"52px 16px 0", flexShrink:0 }}>
+        <button onClick={goBack} style={{ background:"none", border:"none", cursor:"pointer", padding:"4px 0", display:"flex", alignItems:"center", gap:4, color:T.green, fontWeight:700, fontSize:14, marginBottom:12 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Schedule
+        </button>
+        {/* 3-line header matching session card layout */}
+        <div style={{ padding:"8px 0 14px" }}>
+          {/* Line 1: time left, track right */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+            <span style={{ fontSize:11, fontWeight:700, color:T.textSecondary, display:"flex", alignItems:"center", gap:3 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              {session.time}
+            </span>
+            <TrackBadge track={session.track} />
+          </div>
+          {/* Line 2: title */}
+          <div style={{ fontFamily:'"Block Berthold",serif', fontSize:22, letterSpacing:"0.02em", color:T.navy, lineHeight:1.15, marginBottom:8 }}>{session.title}</div>
+          {/* Line 3: room left, bookmark right */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <span style={{ fontSize:11, color:T.textSecondary, display:"flex", alignItems:"center", gap:3 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              {session.room}
+            </span>
+            <BookmarkBtn active={saved} onToggle={toggleSave} />
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{ flex:1, overflowY:"auto", padding:"20px 16px 32px" }}>
+
+        {/* Description */}
+        <p style={{ fontSize:14, color:T.textSecondary, lineHeight:1.7, marginBottom:24 }}>{session.description}</p>
+
+        {/* Speaker */}
+        <div style={{ background:T.surface, borderRadius:14, border:`1px solid ${T.border}`, padding:"16px", marginBottom:20 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Speaker</div>
+          <div style={{ display:"flex", gap:14, alignItems:"flex-start" }}>
+            <div style={{ width:52, height:52, borderRadius:"50%", background:`linear-gradient(135deg, ${tc.dot||T.navyMid}, ${T.navyMid})`, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div>
+              <div style={{ fontWeight:700, fontSize:15, color:T.textPrimary, marginBottom:6 }}>{session.speaker.name}</div>
+              <div style={{ fontSize:13, color:T.textSecondary, lineHeight:1.6 }}>{session.speaker.bio}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Slido */}
+        {session.slido && (
+          <a href={session.slido} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"14px", background:T.navyMid, color:"#fff", border:"none", borderRadius:12, fontSize:14, fontWeight:700, cursor:"pointer", textDecoration:"none", marginBottom:20 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Ask a Question (Slido)
+          </a>
+        )}
+
+        {/* Sponsor divider */}
+        <div style={{ borderTop:`1px solid ${T.border}`, margin:"8px 0 16px" }}></div>
+        {session.id === 3 ? (
+          /* Half-height Planet Protector ad for Circle Recycling */
+          <div style={{ border:`1px solid ${T.border}`, borderRadius:12, overflow:"hidden", marginBottom:8 }}>
+            <div style={{ background:"#F9F9F9", padding:"14px 16px 17px", borderBottom:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <span style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:"uppercase", letterSpacing:"0.1em", textAlign:"center" }}>Planet Protector Sponsor</span>
+            </div>
+            <div style={{ padding:"16px" }}>
+              <div style={{ background:"#fff", border:`1px solid ${T.border}`, borderRadius:8, padding:"12px 16px", marginBottom:12, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <img src="assets/circle-logo.png" alt="Circle Recycling" style={{ width:"100%", maxHeight:44, objectFit:"contain" }} />
+              </div>
+              <div style={{ fontWeight:800, fontSize:15, color:T.textPrimary, marginBottom:10 }}>Circle Recycling</div>
+              <p style={{ fontSize:13, color:T.textSecondary, lineHeight:1.6, marginBottom:10 }}>Circle's Michigan Circular Materials Initiative keeps plastics and organics out of landfills by connecting communities with accessible drop-off and curbside recycling programs across the state.</p>
+              <p style={{ fontSize:13, color:T.textSecondary, lineHeight:1.6, marginBottom:14 }}>Through partnerships with over 60 Michigan municipalities, Circle has diverted more than 18,000 tons of material from landfills since 2022, making recycling simpler, cleaner, and more equitable for every Michigan household.</p>
+              <a href="#" style={{ display:"flex", alignItems:"center", justifyContent:"center", width:"100%", padding:"11px", background:T.green, color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:800, cursor:"pointer", textDecoration:"none", letterSpacing:"0.04em", textTransform:"uppercase" }}>Visit Website</a>
+            </div>
+          </div>
+        ) : session.id === 2 ? (
+          /* Community Pillar ad for Community Solar session */
+          <>
+            <div style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Session Sponsor</div>
+            <SponsorCard sponsor={SPONSORS[0]} compact={false} onTap={onSponsorTap} />
+            <div style={{ border:`1px solid ${T.border}`, borderRadius:12, overflow:"hidden", marginTop:16, marginBottom:8 }}>
+              <div style={{ background:"#F9F9F9", padding:"14px 16px 17px", borderBottom:`1px solid ${T.border}`, textAlign:"center" }}>
+                <span style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:"uppercase", letterSpacing:"0.1em" }}>Community Pillar Sponsor</span>
+              </div>
+              <div style={{ padding:"16px" }}>
+                <div style={{ background:"#fff", border:`1px solid ${T.border}`, borderRadius:8, padding:"10px 16px", marginBottom:12, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <img src="assets/greenfaith-logo.png" alt="GreenFaith Communities" style={{ width:"100%", maxHeight:44, objectFit:"contain" }} />
+                </div>
+                <div style={{ fontWeight:800, fontSize:15, color:T.textPrimary, marginBottom:10 }}>GreenFaith Communities</div>
+                <p style={{ fontSize:13, color:T.textSecondary, lineHeight:1.6, marginBottom:14 }}>GreenFaith Communities unites people of faith across Michigan to protect creation, advocating for clean air, clean water, and a just energy transition rooted in our shared moral responsibility to care for the earth and one another.</p>
+                <a href="#" style={{ display:"flex", alignItems:"center", justifyContent:"center", width:"100%", padding:"11px", background:T.green, color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:800, cursor:"pointer", textDecoration:"none", letterSpacing:"0.04em", textTransform:"uppercase" }}>Join Us</a>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Session Sponsor</div>
+            <SponsorCard sponsor={SPONSORS[0]} compact={false} onTap={onSponsorTap} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ── SPONSORS LIST SCREEN ── */
+const SponsorsListScreen = ({ goTo, onSponsorTap }) => (
+  <div style={{ height:"100%", background:T.bg, display:"flex", flexDirection:"column" }}>
+    <div style={{ background:T.surface, borderBottom:`1px solid ${T.border}`, padding:"52px 20px 14px", flexShrink:0 }}>
+      <div style={{ fontFamily:'"Block Berthold",serif', fontSize:22, letterSpacing:"0.02em", color:T.navy, textAlign:"center" }}>Summit Sponsors</div>
+    </div>
+    <div style={{ flex:1, overflowY:"auto", padding:"16px" }}>
+      {TIER_ORDER.map(tier => {
+        const tierSponsors = SPONSORS.filter(s => s.tier === tier);
+        if (!tierSponsors.length) return null;
+        return (
+          <div key={tier} style={{ marginBottom:24 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:"uppercase", letterSpacing:"0.1em", textAlign:"center", marginBottom:10, paddingBottom:5, borderBottom:`1px solid ${T.border}` }}>{tier} Sponsor</div>
+            {tierSponsors.map(sponsor => (
+              <div key={sponsor.id} onClick={() => onSponsorTap(sponsor.id)}
+                style={{ background:"#fff", border:`1px solid ${T.border}`, borderRadius:14, overflow:"hidden", marginBottom:12, cursor:"pointer", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
+                <div style={{ background:`linear-gradient(135deg, #F4F6FA 0%, #E8EBF2 100%)`, padding:"18px 16px", display:"flex", alignItems:"center", gap:14, borderBottom:`1px solid ${T.border}` }}>
+                  <div style={{ width:65, height:65, borderRadius:10, background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, overflow:"hidden", border:`1px solid ${T.border}` }}>
+                    <img src={sponsor.logo} alt={sponsor.name} style={{ width:"100%", height:"100%", objectFit:"contain", padding:4 }} />
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:800, fontSize:14, color:T.navy, marginBottom:3, lineHeight:1.3 }}>{sponsor.name}</div>
+                    <div style={{ fontSize:12, color:T.textSecondary, lineHeight:1.4 }}>{sponsor.tagline}</div>
+                  </div>
+                </div>
+                <div style={{ padding:"10px 16px", display:"flex", justifyContent:"flex-end", alignItems:"center" }}>
+                  <span style={{ fontSize:13, fontWeight:700, color:sponsor.color }}>{sponsor.cta} &rsaquo;</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
+/* ── SPONSOR AD SCREEN (for non-top-tier sponsors) ── */
+const SponsorAdScreen = ({ goBack, sponsor }) => (
+  <div style={{ height:"100%", background:T.bg, display:"flex", flexDirection:"column" }}>
+    {/* Header bar */}
+    <div style={{ background:T.surface, borderBottom:`1px solid ${T.border}`, padding:"52px 16px 14px", flexShrink:0 }}>
+      <button onClick={goBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:4, color:T.green, fontWeight:700, fontSize:14 }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Summit Sponsors
+      </button>
+    </div>
+    {/* Ad card */}
+    <div style={{ flex:1, overflowY:"auto", padding:"20px 16px" }}>
+      <div style={{ border:`1px solid ${T.border}`, borderRadius:12, overflow:"hidden", background:T.surface, boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>
+        <div style={{ background:"#F9F9F9", padding:"14px 16px 17px", borderBottom:`1px solid ${T.border}`, textAlign:"center" }}>
+          <span style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:"uppercase", letterSpacing:"0.1em" }}>{sponsor.tier} Sponsor</span>
+        </div>
+        <div style={{ padding:"20px 20px" }}>
+          <div style={{ background:"#fff", border:`1px solid ${T.border}`, borderRadius:8, padding:"14px", marginBottom:16, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <img src={sponsor.logo} alt={sponsor.name} style={{ width:"100%", maxHeight:56, objectFit:"contain" }} />
+          </div>
+          <div style={{ fontWeight:800, fontSize:17, color:T.textPrimary, marginBottom:12 }}>{sponsor.name}</div>
+          {sponsor.adBlurbs && sponsor.adBlurbs.map((b,i) => (
+            <p key={i} style={{ fontSize:14, color:T.textSecondary, lineHeight:1.7, marginBottom:i < sponsor.adBlurbs.length-1 ? 12 : 20 }}>{b}</p>
+          ))}
+          <a href={sponsor.website||"#"} style={{ display:"flex", alignItems:"center", justifyContent:"center", width:"100%", padding:"13px", background:T.green, color:"#fff", border:"none", borderRadius:8, fontSize:14, fontWeight:800, cursor:"pointer", textDecoration:"none", letterSpacing:"0.04em", textTransform:"uppercase" }}>{sponsor.cta}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+/* ── SPONSOR DETAIL SCREEN ── */
+const SponsorScreen = ({ goBack, sponsor = SPONSORS[0] }) => (
+  <div style={{ height:"100%", background:T.surface, display:"flex", flexDirection:"column", overflowY:"auto" }}>
+    {/* Header */}
+    <div style={{ background:`linear-gradient(135deg, #1E2B5F 0%, #042A80 100%)`, padding:"52px 24px 28px", textAlign:"center", flexShrink:0 }}>
+      <button onClick={goBack} style={{ position:"absolute", top:56, left:16, background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:4, color:"rgba(255,255,255,0.7)", fontWeight:700, fontSize:13, fontFamily:"Montserrat,sans-serif" }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Back
+      </button>
+      <div style={{ width:80, height:80, borderRadius:16, overflow:"hidden", margin:"0 auto 16px", border:"2px solid rgba(255,255,255,0.2)", background:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <img src={sponsor.logo} alt={sponsor.name} style={{ width:"100%", height:"100%", objectFit:"contain", padding:4 }} />
+      </div>
+      <div style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:6 }}>{sponsor.tier} Sponsor</div>
+      <div style={{ fontFamily:'"Block Berthold",serif', fontSize:26, letterSpacing:"0.02em", color:"#fff", lineHeight:1.1 }}>{sponsor.name}</div>
+    </div>
+
+    {/* Initiative */}
+    <div style={{ padding:"24px 24px 0" }}>
+      <div style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:10 }}>Featured Initiative</div>
+      <div style={{ fontFamily:'"Block Berthold",serif', fontSize:20, letterSpacing:"0.02em", color:T.navy, lineHeight:1.2, marginBottom:10 }}>{sponsor.initiative}</div>
+      <p style={{ fontSize:14, color:T.textSecondary, lineHeight:1.7, marginBottom:20 }}>{sponsor.blurb}</p>
+    </div>
+
+    {/* Photo */}
+    {sponsor.photo && (
+      <div style={{ margin:"0 24px", borderRadius:14, overflow:"hidden", flexShrink:0 }}>
+        <img src={sponsor.photo} alt="" style={{ width:"100%", display:"block", height:200, objectFit:"cover" }} />
+      </div>
+    )}
+
+    {/* More text */}
+    <div style={{ padding:"20px 24px 0" }}>
+      {sponsor.blurb2 && <p style={{ fontSize:14, color:T.textSecondary, lineHeight:1.7, marginBottom:12 }}>{sponsor.blurb2}</p>}
+      {sponsor.blurb3 && <p style={{ fontSize:14, color:T.textSecondary, lineHeight:1.7 }}>{sponsor.blurb3}</p>}
+    </div>
+
+    {/* Button */}
+    <div style={{ padding:"28px 24px 40px", marginTop:"auto" }}>
+      <a href={sponsor.website||"#"} style={{ display:"flex", alignItems:"center", justifyContent:"center", width:"100%", padding:"16px", background:T.green, color:"#fff", border:"none", borderRadius:12, fontSize:15, fontWeight:800, cursor:"pointer", textDecoration:"none", letterSpacing:"0.04em", textTransform:"uppercase" }}>
+        {sponsor.cta} →
+      </a>
+    </div>
+  </div>
+);
+
+/* ── SCREEN 4: VENUE MAP ── */
+const MapScreen = ({ goTo }) => {
+  const NavLinks = () => (
+    <div style={{ display:"flex", justifyContent:"space-between", padding:"12px 20px", background:T.surface, borderTop:`1px solid ${T.border}`, flexShrink:0 }}>
+      <button onClick={() => goTo("home")} style={{ background:"none", border:"none", color:T.green, fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Back to Home
+      </button>
+      <button onClick={() => goTo("schedule")} style={{ background:"none", border:"none", color:T.green, fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
+        View Sessions
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  );
+  return (
+    <div style={{ height:"100%", background:"#fff", display:"flex", flexDirection:"column" }}>
+      {/* Map */}
+      <div style={{ flex:1, overflowY:"auto", position:"relative", paddingTop:52 }}>
+        <img src="assets/kellogg-floor-plan.png" alt="Kellogg Center Floor Plan" style={{ width:"100%", display:"block" }} />
+      </div>
+      <NavLinks />
+    </div>
+  );
+};
+
+/* ── BOTTOM TAB BAR ── */
+const TabBar = ({ screen, goTo, showSponsor, showSponsorAd }) => {
+  const tabs = [
+    { id:"home", label:"Home", icon:<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>, icon2:<polyline points="9 22 9 12 15 12 15 22"/> },
+    { id:"schedule", label:"Schedule", icon:<><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></> },
+    { id:"map", label:"Map", icon:<><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></> },
+    { id:"sponsors", label:"Sponsors", icon:<><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></> },
+  ];
+  const active = screen === "detail" ? "schedule" : screen === "sponsors" ? "sponsors" : (showSponsor || showSponsorAd) ? "sponsors" : screen;
+  return (
+    <div style={{ display:"flex", background:T.surface, borderTop:`1px solid ${T.border}`, flexShrink:0, paddingBottom:20 }}>
+      {tabs.map(tab => {
+        const isActive = active === tab.id;
+        return (
+          <button key={tab.id} onClick={() => goTo(tab.id)} style={{ flex:1, padding:"10px 4px 6px", background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill={isActive && tab.id === "sponsors" ? T.green : "none"} stroke={isActive ? T.green : T.textMuted} strokeWidth={isActive ? 2.5 : 1.8} strokeLinecap="round" strokeLinejoin="round">{tab.icon}{tab.icon2}</svg>
+            <span style={{ fontSize:10, fontWeight:700, color: isActive ? T.green : T.textMuted }}>{tab.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+/* ── ROOT APP ── */
+function App() {
+  const [screen, setScreen] = useState("home");
+  const [detail, setDetail] = useState(null);
+  const [saved, setSaved] = useState(new Set());
+
+  const [showSponsor, setShowSponsor] = useState(false);
+  const [showSponsorAd, setShowSponsorAd] = useState(false);
+  const [sponsorId, setSponsorId] = useState(null);
+
+  const goTo = (s, data = null) => {
+    setScreen(s);
+    setShowSponsor(false);
+    setShowSponsorAd(false);
+    if (s === "detail") setDetail(data);
+  };
+
+  const toggleSave = (id) => setSaved(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  useEffect(() => { lucide.createIcons(); });
+
+  const renderScreen = () => {
+    if (showSponsor) return <SponsorScreen goBack={() => setShowSponsor(false)} sponsor={SPONSORS.find(s=>s.id===sponsorId)||SPONSORS[0]} />;
+    if (showSponsorAd) return <SponsorAdScreen goBack={() => setShowSponsorAd(false)} sponsor={SPONSORS.find(s=>s.id===sponsorId)} />;
+    if (screen === "home")     return <HomeScreen goTo={goTo} onSponsorTap={() => { setSponsorId("mff"); setShowSponsor(true); }} />;
+    if (screen === "schedule") return <ScheduleScreen goTo={goTo} saved={saved} toggleSave={toggleSave} onSponsorTap={() => { setSponsorId("mff"); setShowSponsor(true); }} />;
+    if (screen === "detail" && detail) return <DetailScreen session={detail} goBack={() => goTo("schedule")} saved={saved.has(detail.id)} toggleSave={() => toggleSave(detail.id)} onSponsorTap={() => { setSponsorId("mff"); setShowSponsor(true); }} />;
+    if (screen === "map")      return <MapScreen goTo={goTo} />;
+    if (screen === "sponsors") return <SponsorsListScreen goTo={goTo} onSponsorTap={(id) => {
+      if (id === "mff")    { setSponsorId(id); setShowSponsor(true); }
+      else if (id === "circle" || id === "gf") { setSponsorId(id); setShowSponsorAd(true); }
+      else if (id === "aapp") { window.open("https://annarborpublicpower.org/", "_blank"); }
+    }} />;
+    return null;
+  };
+
+  const content = (
+    <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", fontFamily:"'Montserrat',sans-serif" }}>
+      <div style={{ flex:1, overflow:"hidden", position:"relative" }}>
+        {renderScreen()}
+      </div>
+      <TabBar screen={screen} goTo={goTo} showSponsor={showSponsor} showSponsorAd={showSponsorAd} />
+    </div>
+  );
+
+  return (
+    <IOSDevice dark={false}>
+      {content}
+    </IOSDevice>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

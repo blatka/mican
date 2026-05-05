@@ -91,7 +91,7 @@ export default function HomeScreen() {
 
   return (
     <div className="screen" style={{ background: '#F7F8FA' }}>
-      <div style={{ paddingTop: 'max(52px, env(safe-area-inset-top, 52px))' }} />
+      <div style={{ paddingTop: 'max(26px, env(safe-area-inset-top, 26px))' }} />
 
       {/* Hero image */}
       <img
