@@ -77,8 +77,8 @@ export default function HomeScreen() {
         }
         if (!found) return
 
-        const imageUrl = found.ad.meta?.ad_image
-          ? await fetchMediaUrl(Number(found.ad.meta.ad_image))
+        const imageUrl = found.org.featured_media
+          ? await fetchMediaUrl(found.org.featured_media)
           : null
 
         setFeaturedSponsor({ ...found, imageUrl })
@@ -174,7 +174,7 @@ export default function HomeScreen() {
                 style={{ ...styles.learnMore, background: featuredSponsor.tier.color }}
                 onClick={e => { e.stopPropagation(); navigate(`/sponsor-detail/${featuredSponsor.org.id}`) }}
               >
-                {featuredSponsor.ad.meta?.ad_cta_label || 'Learn More'} &rsaquo;
+                LEARN MORE &rsaquo;
               </button>
             </div>
           </div>

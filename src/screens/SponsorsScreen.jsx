@@ -105,13 +105,9 @@ export default function SponsorsScreen() {
       <div className="screen" style={{ padding: '16px 16px 0' }}>
         {loading && <div className="spinner-wrap"><div className="spinner" /></div>}
 
-        {!loading && sections.map(({ sponsorshipId, tier, orgItems }) => (
+        {!loading && sections.filter(s => s.orgItems.length > 0).map(({ sponsorshipId, tier, orgItems }) => (
           <div key={sponsorshipId}>
             <TierHeading label={tier.label} />
-
-            {orgItems.length === 0 && (
-              <div style={styles.emptyTier}>No sponsors listed yet</div>
-            )}
 
             {orgItems.map(org => (
               <div

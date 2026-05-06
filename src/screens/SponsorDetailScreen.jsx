@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
-import { fetchAdsByOrgId, fetchOrganization, fetchMediaUrl } from '../api/index.js'
+import { fetchAdsByOrgId, fetchOrganization, fetchMediaUrl, fetchSponsorshipsByOrg } from '../api/index.js'
 import { SPONSORSHIP_TIERS } from '../constants/sponsors.js'
 import { decodeHtml } from '../utils/html.js'
 
@@ -13,19 +13,27 @@ export default function SponsorDetailScreen() {
   const [org, setOrg] = useState(null)
   const [logoUrl, setLogoUrl] = useState(null)
   const [photoUrl, setPhotoUrl] = useState(null)
+  const [tier, setTier] = useState(null)
   const [loading, setLoading] = useState(true)
-
-  // Find CI tier for the header label
-  const tier = Object.values(SPONSORSHIP_TIERS).find(t => t.detailPage)
 
   useEffect(() => {
     async function load() {
       try {
-        const [adsByOrg, orgData] = await Promise.all([
+        const [adsByOrg, orgData, sponsorships] = await Promise.all([
           fetchAdsByOrgId(),
           fetchOrganization(Number(orgId)),
+          fetchSponsorshipsByOrg(Number(orgId)).catch(() => []),
         ])
         setOrg(orgData)
+
+        // Find highest-weight tier for this org
+        let bestTier = null
+        for (const s of (sponsorships ?? [])) {
+          const t = SPONSORSHIP_TIERS[Number(s.child_object_id)]
+          if (t?.weight && (!bestTier || t.weight > bestTier.weight)) bestTier = t
+        }
+        setTier(bestTier)
+
         const found = adsByOrg[Number(orgId)] ?? null
         if (!found) { setLoading(false); return }
         setAd(found)
@@ -63,7 +71,7 @@ export default function SponsorDetailScreen() {
           </div>
         )}
         {tier && (
-          <div style={styles.tierLabel}>{tier.label.toUpperCase()}</div>
+          <div style={styles.tierLabel}>{tier.label.toUpperCase()} SPONSOR</div>
         )}
         {(org || ad) && (
           <div style={styles.orgName}>
@@ -80,7 +88,7 @@ export default function SponsorDetailScreen() {
           <div style={{ padding: '24px 24px 0' }}>
             {ad.meta?.ad_text_1 && (
               <>
-                <div style={styles.initiativeLabel}>FEATURED INITIATIVE</div>
+                <div style={styles.initiativeLabel}>HERE'S THE LATEST</div>
                 <div style={styles.initiativeName}>{ad.meta.ad_headline}</div>
                 <p style={styles.bodyText}>{ad.meta.ad_text_1}</p>
               </>
@@ -207,9 +215,9 @@ const styles = {
     marginBottom: 20,
   },
   featurePhoto: {
-    width: 'calc(100% + 0px)',
-    height: 200,
-    objectFit: 'cover',
+    width: '100%',
+    height: 'auto',
+    objectFit: 'contain',
     borderRadius: 14,
     marginBottom: 20,
   },
@@ -220,6 +228,7 @@ const styles = {
     fontFamily: 'Montserrat, sans-serif',
     fontWeight: 800,
     fontSize: 14,
+    textTransform: 'uppercase',
     borderRadius: 12,
     padding: 16,
     textAlign: 'center',

@@ -189,6 +189,7 @@ const styles = {
     fontFamily: 'Montserrat, sans-serif',
     fontWeight: 800,
     fontSize: 13,
+    textTransform: 'uppercase',
     letterSpacing: '0.04em',
     borderRadius: 10,
     padding: '14px 24px',

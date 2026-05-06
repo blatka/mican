@@ -547,6 +547,7 @@ const styles = {
     fontFamily: 'Montserrat, sans-serif',
     fontWeight: 700,
     fontSize: 12,
+    textTransform: 'uppercase',
     borderRadius: 8,
     padding: '8px 20px',
     border: 'none',

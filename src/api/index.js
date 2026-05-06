@@ -167,7 +167,7 @@ export async function fetchAdsByOrgId() {
   const map = {}
   for (const ad of ads) {
     const orgId = Number(ad.meta?.sponsor_id)
-    if (orgId) map[orgId] = ad
+    if (orgId && (!map[orgId] || ad.id < map[orgId].id)) map[orgId] = ad
   }
   return map
 }
