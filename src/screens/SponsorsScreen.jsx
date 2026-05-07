@@ -63,6 +63,7 @@ export default function SponsorsScreen() {
   }, [])
 
   function handleTap(sponsorshipId, tier, org) {
+    console.log('[SponsorsScreen] tap:', { orgId: org.id, name: org.name, sponsorshipId, tierLabel: tier.label, detailPage: tier.detailPage, hasAd: !!org.ad })
     if (sponsorshipId === NONPROFIT_ID) {
       if (org.websiteUrl) window.open(org.websiteUrl, '_blank', 'noopener,noreferrer')
       return
