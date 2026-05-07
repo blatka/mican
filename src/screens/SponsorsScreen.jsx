@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import {
-  fetchAdsByOrgId, fetchOrgSponsorshipRelations, fetchOrganizations, fetchMediaUrls,
+  fetchAdsByOrgId, fetchOrgsForSponsorship, fetchMediaUrls,
 } from '../api/index.js'
 import { SPONSORSHIP_TIERS, DISPLAYED_TIERS } from '../constants/sponsors.js'
 import { decodeHtml } from '../utils/html.js'
@@ -19,47 +19,39 @@ export default function SponsorsScreen() {
   useEffect(() => {
     async function load() {
       try {
-        const [adsByOrg, relMap] = await Promise.all([
+        // Fetch ads and all tiers in parallel using the same per-tier endpoint as HomeScreen
+        const [adsByOrg, ...tierOrgResults] = await Promise.all([
           fetchAdsByOrgId(),
-          fetchOrgSponsorshipRelations(),
+          ...DISPLAYED_TIERS.map(id => fetchOrgsForSponsorship(id)),
         ])
-        const orgTierMap = {}
-        for (const [orgIdStr, children] of Object.entries(relMap)) {
-          const orgId = Number(orgIdStr)
-          for (const { child_object_id } of children) {
-            const tierId = Number(child_object_id)
-            const tier = SPONSORSHIP_TIERS[tierId]
-            if (!tier) continue
-            const existing = SPONSORSHIP_TIERS[orgTierMap[orgId]]
-            if (!existing || (tier.weight ?? 0) >= (existing.weight ?? 0)) {
-              orgTierMap[orgId] = tierId
-            }
-          }
+
+        // Deduplicate: each org appears only in their highest tier (DISPLAYED_TIERS is high→low)
+        const seenOrgIds = new Set()
+        const tierOrgMap = {}
+        for (let i = 0; i < DISPLAYED_TIERS.length; i++) {
+          const id = DISPLAYED_TIERS[i]
+          tierOrgMap[id] = tierOrgResults[i].filter(org => {
+            if (seenOrgIds.has(org.id)) return false
+            seenOrgIds.add(org.id)
+            return true
+          })
         }
 
-        const allOrgIds = Object.keys(orgTierMap).map(Number)
-        const orgs = allOrgIds.length > 0 ? await fetchOrganizations(allOrgIds) : []
-        const mediaIds = orgs.map(o => o.featured_media).filter(Boolean)
+        // Batch-fetch all org logos
+        const allOrgs = tierOrgResults.flat()
+        const mediaIds = [...new Set(allOrgs.map(o => o.featured_media).filter(Boolean))]
         const mediaMap = mediaIds.length > 0 ? await fetchMediaUrls(mediaIds) : {}
 
-        const tierGroups = {}
-        for (const org of orgs) {
-          const tierId = orgTierMap[org.id]
-          if (!tierId) continue
-          if (!tierGroups[tierId]) tierGroups[tierId] = []
-          tierGroups[tierId].push({
+        setSections(DISPLAYED_TIERS.map(id => ({
+          sponsorshipId: id,
+          tier: SPONSORSHIP_TIERS[id],
+          orgItems: tierOrgMap[id].map(org => ({
             id: org.id,
             name: decodeHtml(org.title?.rendered),
             logoUrl: org.featured_media ? (mediaMap[org.featured_media] ?? null) : null,
             websiteUrl: org.meta?.organization_link ?? null,
             ad: adsByOrg[org.id] ?? null,
-          })
-        }
-
-        setSections(DISPLAYED_TIERS.map(id => ({
-          sponsorshipId: id,
-          tier: SPONSORSHIP_TIERS[id],
-          orgItems: (tierGroups[id] ?? []).sort((a, b) => a.name.localeCompare(b.name)),
+          })).sort((a, b) => a.name.localeCompare(b.name)),
         })))
       } catch (e) {
         console.warn('SponsorsScreen load failed:', e)

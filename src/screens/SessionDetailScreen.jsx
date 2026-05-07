@@ -127,9 +127,13 @@ export default function SessionDetailScreen() {
           pickedAdOrgId = Number(orgIdStr)
           try {
             const sponsorships = await fetchSponsorshipsByOrg(pickedAdOrgId)
+            let bestWeight = -1
             for (const s of (sponsorships ?? [])) {
               const tier = SPONSORSHIP_TIERS[Number(s.child_object_id)]
-              if (tier?.weight) { pickedAdDetailPage = tier.detailPage ?? false; break }
+              if (tier?.weight && tier.weight > bestWeight) {
+                bestWeight = tier.weight
+                pickedAdDetailPage = tier.detailPage ?? false
+              }
             }
           } catch { /* use defaults */ }
         }

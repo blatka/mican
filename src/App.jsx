@@ -47,6 +47,15 @@ function AppInner() {
   useEffect(() => {
     document.body.style.zoom = SCALES[idx]
   }, [idx])
+
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.origin !== 'https://www.miclimateaction.org') return
+      if (event.data === 'reload') window.location.reload()
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
   return (
     <BrowserRouter>
       <Routes>
