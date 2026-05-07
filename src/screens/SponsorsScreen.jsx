@@ -51,7 +51,9 @@ export default function SponsorsScreen() {
             logoUrl: org.featured_media ? (mediaMap[org.featured_media] ?? null) : null,
             websiteUrl: org.meta?.organization_link ?? null,
             ad: adsByOrg[org.id] ?? null,
-          })).sort((a, b) => a.name.localeCompare(b.name)),
+          })).sort(id === NONPROFIT_ID
+            ? () => Math.random() - 0.5
+            : (a, b) => a.name.localeCompare(b.name)),
         })))
       } catch (e) {
         console.warn('SponsorsScreen load failed:', e)
@@ -63,8 +65,8 @@ export default function SponsorsScreen() {
   }, [])
 
   function handleTap(sponsorshipId, tier, org) {
-    console.log('[SponsorsScreen] tap:', { orgId: org.id, name: org.name, sponsorshipId, tierLabel: tier.label, detailPage: tier.detailPage, hasAd: !!org.ad })
     if (sponsorshipId === NONPROFIT_ID) {
+      if (org.ad) { navigate(`/sponsor-ad/${org.ad.id}`); return }
       if (org.websiteUrl) window.open(org.websiteUrl, '_blank', 'noopener,noreferrer')
       return
     }
@@ -82,7 +84,7 @@ export default function SponsorsScreen() {
   }
 
   function ctaLabel(sponsorshipId, tier, org) {
-    if (sponsorshipId === NONPROFIT_ID) return 'Visit'
+    if (sponsorshipId === NONPROFIT_ID) return org.ad ? 'View' : 'Visit'
     if (org.ad) return tier.detailPage ? 'Learn More' : 'View'
     return 'Visit'
   }
