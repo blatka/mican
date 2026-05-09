@@ -139,6 +139,10 @@ export default function HomeScreen() {
           <MapPin size={18} strokeWidth={2.5} stroke="#FFFFFF" />
           Venue Map
         </button>
+        <button style={{ ...styles.ctaGreen, padding: '10px 18px' }} onClick={() => window.open('https://community.miclimateaction.org/', '_blank', 'noopener,noreferrer')}>
+          <img src="/assets/micommunity-icon-white.svg" alt="" style={{ width: 36, height: 36 }} />
+          MiCommunity
+        </button>
       </div>
 
       {/* Featured sponsor card */}

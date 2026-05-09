@@ -115,6 +115,12 @@ img {
   padding-top: max(10px, env(safe-area-inset-top, 10px));
 }
 
+/* Session description links */
+.session-description a {
+  color: #398032;
+  text-decoration: underline;
+}
+
 /* Spinner */
 .spinner-wrap {
   display: flex;

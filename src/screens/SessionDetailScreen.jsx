@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Clock, MapPin, Bookmark, ChevronLeft, Heart } from 'lucide-react'
 import TrackBadge from '../components/TrackBadge.jsx'
-import { fetchSession, fetchPerson, fetchMediaUrls, fetchAdsByOrgId, fetchOrgsForSponsorship, fetchSponsorshipsByOrg } from '../api/index.js'
+import { fetchSession, fetchPerson, fetchMediaUrls, fetchMediaUrl, fetchAdsByOrgId, fetchOrgsForSponsorship, fetchSponsorshipsByOrg, fetchOrganization } from '../api/index.js'
 import { useBookmarks } from '../hooks/useBookmarks.js'
 import { roomName } from '../constants/rooms.js'
 import { formatTime } from '../utils/time.js'
@@ -15,7 +15,7 @@ const NONPROFIT_TIER_ID = 8979
 // Module-level store — survives navigation, cleared only on full page reload
 const _cache = {}
 
-function SpeakerCard({ person, photoUrl, track }) {
+function SpeakerCard({ person, photoUrl, track, role = 'speaker' }) {
   const [expanded, setExpanded] = useState(false)
   const name = person.title?.rendered ?? ''
   const title = person.acf?.people_title ?? ''
@@ -30,7 +30,7 @@ function SpeakerCard({ person, photoUrl, track }) {
 
   return (
     <div style={styles.speakerCard}>
-      <div style={styles.speakerLabel}>SPEAKER</div>
+      <div style={styles.speakerLabel}>{role.toUpperCase()}</div>
       <div style={styles.speakerRow}>
         <div style={{
           ...styles.avatar,
@@ -86,11 +86,13 @@ export default function SessionDetailScreen() {
   const hit = _cache[id]
   const [session, setSession] = useState(hit?.session ?? null)
   const [speakers, setSpeakers] = useState(hit?.speakers ?? [])
+  const [speakerRoles, setSpeakerRoles] = useState(hit?.speakerRoles ?? {})
   const [speakerPhotos, setSpeakerPhotos] = useState(hit?.speakerPhotos ?? {})
   const [ad, setAd] = useState(hit?.ad ?? null)
   const [adImageUrl, setAdImageUrl] = useState(hit?.adImageUrl ?? null)
   const [adOrgId, setAdOrgId] = useState(hit?.adOrgId ?? null)
   const [adDetailPage, setAdDetailPage] = useState(hit?.adDetailPage ?? false)
+  const [adTierLabel, setAdTierLabel] = useState(hit?.adTierLabel ?? '')
   const [nonprofits, setNonprofits] = useState(hit?.nonprofits ?? [])
   const [loading, setLoading] = useState(!hit)
 
@@ -109,30 +111,48 @@ export default function SessionDetailScreen() {
         if (!sessionData) { setLoading(false); return }
         setSession(sessionData)
 
-        // Phase 2: fetch speakers (need session data first)
-        const speakerIds = sessionData.acf?.speaker ?? []
+        // Phase 2: fetch speakers — use new session_speakers repeater, fall back to legacy speaker field
+        const sessionSpeakers = sessionData.acf?.session_speakers
+        const roleMap = {}
+        let speakerIds = []
+        if (sessionSpeakers?.length > 0) {
+          for (const row of sessionSpeakers) {
+            const pid = row.person?.[0]
+            if (pid) { speakerIds.push(pid); roleMap[pid] = row.role || 'speaker' }
+          }
+        } else {
+          speakerIds = sessionData.acf?.speaker ?? []
+        }
         const people = speakerIds.length > 0
           ? await Promise.all(speakerIds.map(pid => fetchPerson(pid)))
           : []
         setSpeakers(people)
+        setSpeakerRoles(roleMap)
 
         // Pick a random paid ad, then look up its tier with one targeted jet-rel call
         const paidAds = Object.entries(adsByOrg)
         let pickedAd = null
         let pickedAdOrgId = null
         let pickedAdDetailPage = false
+        let pickedAdTierLabel = ''
+        let pickedAdOrg = null
         if (paidAds.length > 0) {
           const [orgIdStr, ad] = paidAds[Math.floor(Math.random() * paidAds.length)]
           pickedAd = ad
           pickedAdOrgId = Number(orgIdStr)
           try {
-            const sponsorships = await fetchSponsorshipsByOrg(pickedAdOrgId)
+            const [sponsorships, orgData] = await Promise.all([
+              fetchSponsorshipsByOrg(pickedAdOrgId),
+              fetchOrganization(pickedAdOrgId),
+            ])
+            pickedAdOrg = orgData
             let bestWeight = -1
             for (const s of (sponsorships ?? [])) {
               const tier = SPONSORSHIP_TIERS[Number(s.child_object_id)]
               if (tier?.weight && tier.weight > bestWeight) {
                 bestWeight = tier.weight
                 pickedAdDetailPage = tier.detailPage ?? false
+                pickedAdTierLabel = tier.label
               }
             }
           } catch { /* use defaults */ }
@@ -146,12 +166,12 @@ export default function SessionDetailScreen() {
         const speakerPhotoIds = people
           .map(p => p.acf?.people_photos?.people_headshot)
           .filter(Boolean)
-        const adImageId = pickedAd?.meta?.ad_image ? Number(pickedAd.meta.ad_image) : null
+        const adLogoMediaId = pickedAdOrg?.featured_media || null
         const nonprofitMediaIds = pickedNonprofits.map(o => o.featured_media).filter(Boolean)
 
         const allMediaIds = [
           ...speakerPhotoIds,
-          ...(adImageId ? [adImageId] : []),
+          ...(adLogoMediaId ? [adLogoMediaId] : []),
           ...nonprofitMediaIds,
         ]
         const mediaMap = allMediaIds.length > 0 ? await fetchMediaUrls(allMediaIds) : {}
@@ -166,17 +186,19 @@ export default function SessionDetailScreen() {
           websiteUrl: o.meta?.organization_link ?? null,
         }))
 
-        const resolvedAdImageUrl = adImageId ? (mediaMap[adImageId] ?? null) : null
+        const resolvedAdImageUrl = adLogoMediaId ? (mediaMap[adLogoMediaId] ?? null) : null
 
         // Store everything in module cache before setting state
         _cache[id] = {
           session: sessionData,
           speakers: people,
+          speakerRoles: roleMap,
           speakerPhotos: photos,
           ad: pickedAd,
           adImageUrl: resolvedAdImageUrl,
           adOrgId: pickedAdOrgId,
           adDetailPage: pickedAdDetailPage,
+          adTierLabel: pickedAdTierLabel,
           nonprofits: resolvedNonprofits,
         }
 
@@ -185,6 +207,7 @@ export default function SessionDetailScreen() {
           setAd(pickedAd)
           setAdOrgId(pickedAdOrgId)
           setAdDetailPage(pickedAdDetailPage)
+          setAdTierLabel(pickedAdTierLabel)
           setAdImageUrl(resolvedAdImageUrl)
         }
         setNonprofits(resolvedNonprofits)
@@ -272,6 +295,7 @@ export default function SessionDetailScreen() {
       <div className="screen" style={{ padding: '20px 16px 0' }}>
         {acf.description && (
           <p
+            className="session-description"
             style={styles.description}
             dangerouslySetInnerHTML={{ __html: acf.description }}
           />
@@ -281,8 +305,9 @@ export default function SessionDetailScreen() {
         {speakers.map(person => {
           const photoId = person.acf?.people_photos?.people_headshot
           const photoUrl = photoId ? speakerPhotos[photoId] : null
+          const role = speakerRoles[person.id] || 'speaker'
           return (
-            <SpeakerCard key={person.id} person={person} photoUrl={photoUrl} track={track} />
+            <SpeakerCard key={person.id} person={person} photoUrl={photoUrl} track={track} role={role} />
           )
         })}
 
@@ -298,7 +323,7 @@ export default function SessionDetailScreen() {
               onKeyDown={e => e.key === 'Enter' && (adDetailPage && adOrgId ? navigate(`/sponsor-detail/${adOrgId}`) : navigate(`/sponsor-ad/${ad.id}`))}
             >
               <div style={styles.adHeader}>
-                <span style={styles.adLabel}>FEATURED SPONSOR</span>
+                <span style={styles.adLabel}>{adTierLabel ? `${adTierLabel.toUpperCase()} SPONSOR` : 'FEATURED SPONSOR'}</span>
               </div>
               <div style={styles.adBody}>
                 {adImageUrl && (
