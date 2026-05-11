@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, MapPin, Share } from 'lucide-react'
-import { fetchAdsByOrgId, fetchOrgsForSponsorship, fetchMediaUrl } from '../api/index.js'
+import { fetchAdsByOrgId, fetchOrgsForSponsorship, fetchMediaUrl, pickAd } from '../api/index.js'
 import { decodeHtml } from '../utils/html.js'
 import { SPONSORSHIP_TIERS, DISPLAYED_TIERS } from '../constants/sponsors.js'
 
@@ -68,10 +68,10 @@ export default function HomeScreen() {
           const tier = SPONSORSHIP_TIERS[sponsorshipId]
           if (!tier.weight) continue
           const orgs = await fetchOrgsForSponsorship(sponsorshipId)
-          const candidates = orgs.filter(org => adsByOrg[org.id])
+          const candidates = orgs.filter(org => adsByOrg[org.id]?.length)
           if (candidates.length > 0) {
             const org = candidates[Math.floor(Math.random() * candidates.length)]
-            found = { ad: adsByOrg[org.id], tier, org }
+            found = { ad: pickAd(adsByOrg, org.id), tier, org }
             break
           }
         }
@@ -158,11 +158,13 @@ export default function HomeScreen() {
           >
             <div style={styles.cardHeader}>
               {featuredSponsor.imageUrl && (
-                <img
-                  src={featuredSponsor.imageUrl}
-                  alt={featuredSponsor.ad.meta?.ad_headline}
-                  style={styles.cardLogo}
-                />
+                <div style={styles.cardLogoCircle}>
+                  <img
+                    src={featuredSponsor.imageUrl}
+                    alt={featuredSponsor.ad.meta?.ad_headline}
+                    style={styles.cardLogo}
+                  />
+                </div>
               )}
               <div style={styles.cardOrgName}>
                 {decodeHtml(featuredSponsor.org.title?.rendered)}
@@ -257,10 +259,22 @@ const styles = {
     alignItems: 'center',
     gap: 8,
   },
+  cardLogoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: '50%',
+    background: '#FFFFFF',
+    border: '2px solid rgba(255,255,255,0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    flexShrink: 0,
+  },
   cardLogo: {
-    height: 44,
+    width: '80%',
+    height: '80%',
     objectFit: 'contain',
-    maxWidth: '100%',
   },
   cardOrgName: {
     fontFamily: 'Montserrat, sans-serif',

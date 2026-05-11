@@ -160,16 +160,25 @@ export async function fetchSponsorAdRelations() {
   return getRel('/32')
 }
 
-// Flat map: orgId → sponsor ad object
+// Flat map: orgId → [ad, ad, ...] — all ads for each org
 // Built from the sponsor_id meta field on each ad — the canonical org→ad link
 export async function fetchAdsByOrgId() {
   const ads = await fetchSponsorAds()
   const map = {}
   for (const ad of ads) {
     const orgId = Number(ad.meta?.sponsor_id)
-    if (orgId && (!map[orgId] || ad.id < map[orgId].id)) map[orgId] = ad
+    if (!orgId) continue
+    if (!map[orgId]) map[orgId] = []
+    map[orgId].push(ad)
   }
   return map
+}
+
+// Pick a random ad from an org's ad array, or null if none
+export function pickAd(adsByOrg, orgId) {
+  const ads = adsByOrg[orgId]
+  if (!ads?.length) return null
+  return ads[Math.floor(Math.random() * ads.length)]
 }
 
 // All orgs linked to a sponsorship, with full org data

@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import SessionCard from '../components/SessionCard.jsx'
 import SponsorAdCard from '../components/SponsorAdCard.jsx'
 import TrackBadge from '../components/TrackBadge.jsx'
-import { fetchSessions, fetchAdsByOrgId, fetchMediaUrl, fetchOrganization, fetchSponsorshipsByOrg } from '../api/index.js'
+import { fetchSessions, fetchAdsByOrgId, fetchMediaUrl, fetchOrganization, fetchSponsorshipsByOrg, pickAd } from '../api/index.js'
 import { useBookmarks } from '../hooks/useBookmarks.js'
 import { TRACK_BY_ID, TRACKS } from '../constants/tracks.js'
 import { SPONSORSHIP_TIERS } from '../constants/sponsors.js'
@@ -63,10 +63,11 @@ export default function ScheduleScreen() {
     async function loadAd() {
       try {
         const adsByOrg = await fetchAdsByOrgId()
-        const entries = Object.entries(adsByOrg)
+        const entries = Object.entries(adsByOrg).filter(([, ads]) => ads.length > 0)
         if (entries.length === 0) return
 
-        const [orgIdStr, ad] = entries[Math.floor(Math.random() * entries.length)]
+        const [orgIdStr, ads] = entries[Math.floor(Math.random() * entries.length)]
+        const ad = ads[Math.floor(Math.random() * ads.length)]
 
         const orgId = Number(orgIdStr)
 

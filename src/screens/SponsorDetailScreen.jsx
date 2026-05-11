@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
-import { fetchAdsByOrgId, fetchOrganization, fetchMediaUrl, fetchSponsorshipsByOrg } from '../api/index.js'
+import { fetchAdsByOrgId, fetchOrganization, fetchMediaUrl, fetchSponsorshipsByOrg, pickAd } from '../api/index.js'
 import { SPONSORSHIP_TIERS } from '../constants/sponsors.js'
 import { decodeHtml } from '../utils/html.js'
 
@@ -34,7 +34,7 @@ export default function SponsorDetailScreen() {
         }
         setTier(bestTier)
 
-        const found = adsByOrg[Number(orgId)] ?? null
+        const found = pickAd(adsByOrg, Number(orgId))
         if (!found) { setLoading(false); return }
         setAd(found)
 

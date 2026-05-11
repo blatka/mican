@@ -130,15 +130,15 @@ export default function SessionDetailScreen() {
         setSpeakerRoles(roleMap)
 
         // Pick a random paid ad, then look up its tier with one targeted jet-rel call
-        const paidAds = Object.entries(adsByOrg)
+        const paidOrgs = Object.entries(adsByOrg).filter(([, ads]) => ads.length > 0)
         let pickedAd = null
         let pickedAdOrgId = null
         let pickedAdDetailPage = false
         let pickedAdTierLabel = ''
         let pickedAdOrg = null
-        if (paidAds.length > 0) {
-          const [orgIdStr, ad] = paidAds[Math.floor(Math.random() * paidAds.length)]
-          pickedAd = ad
+        if (paidOrgs.length > 0) {
+          const [orgIdStr, ads] = paidOrgs[Math.floor(Math.random() * paidOrgs.length)]
+          pickedAd = ads[Math.floor(Math.random() * ads.length)]
           pickedAdOrgId = Number(orgIdStr)
           try {
             const [sponsorships, orgData] = await Promise.all([

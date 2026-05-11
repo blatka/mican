@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import {
-  fetchAdsByOrgId, fetchOrgsForSponsorship, fetchMediaUrls,
+  fetchAdsByOrgId, fetchOrgsForSponsorship, fetchMediaUrls, pickAd,
 } from '../api/index.js'
 import { SPONSORSHIP_TIERS, DISPLAYED_TIERS } from '../constants/sponsors.js'
 import { decodeHtml } from '../utils/html.js'
@@ -50,7 +50,7 @@ export default function SponsorsScreen() {
             name: decodeHtml(org.title?.rendered),
             logoUrl: org.featured_media ? (mediaMap[org.featured_media] ?? null) : null,
             websiteUrl: org.meta?.organization_link ?? null,
-            ad: adsByOrg[org.id] ?? null,
+            ad: pickAd(adsByOrg, org.id),
           })).sort(id === NONPROFIT_ID
             ? () => Math.random() - 0.5
             : (a, b) => a.name.localeCompare(b.name)),
