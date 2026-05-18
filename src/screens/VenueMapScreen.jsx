@@ -9,7 +9,7 @@ export default function VenueMapScreen() {
 
       <div className="screen" style={{ background: '#F7F8FA' }}>
         <img
-          src="/assets/kellogg-floor-plan.png"
+          src="/assets/kellogg-floor-plan-v2.png"
           alt="Kellogg Center Floor Plan"
           style={{ width: '100%', display: 'block' }}
         />
