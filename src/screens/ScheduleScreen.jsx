@@ -3,10 +3,10 @@ import { useLocation } from 'react-router-dom'
 import SessionCard from '../components/SessionCard.jsx'
 import SponsorAdCard from '../components/SponsorAdCard.jsx'
 import TrackBadge from '../components/TrackBadge.jsx'
-import { fetchSessions, fetchAdsByOrgId, fetchMediaUrl, fetchOrganization, fetchSponsorshipsByOrg, pickAd } from '../api/index.js'
+import { fetchSessions, fetchAdsByOrgId, fetchMediaUrl, fetchOrganization, fetchSponsorshipsByOrg, fetchOrgsForSponsorship, pickAd } from '../api/index.js'
 import { useBookmarks } from '../hooks/useBookmarks.js'
 import { TRACK_BY_ID, TRACKS } from '../constants/tracks.js'
-import { SPONSORSHIP_TIERS } from '../constants/sponsors.js'
+import { SPONSORSHIP_TIERS, PAID_TIERS } from '../constants/sponsors.js'
 import { formatTime, formatDate } from '../utils/time.js'
 import { decodeHtml } from '../utils/html.js'
 import { Bookmark } from 'lucide-react'
@@ -43,7 +43,7 @@ export default function ScheduleScreen() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(initialTab)
   const [activeTrack, setActiveTrack] = useState(null)
-  const [featuredAd, setFeaturedAd] = useState(null)
+  const [featuredAds, setFeaturedAds] = useState([])
   const { isBookmarked, toggle } = useBookmarks()
 
   useEffect(() => {
@@ -62,38 +62,54 @@ export default function ScheduleScreen() {
     // Ad loads independently — no jet-rel, won't block the session list
     async function loadAd() {
       try {
-        const adsByOrg = await fetchAdsByOrgId()
-        const entries = Object.entries(adsByOrg).filter(([, ads]) => ads.length > 0)
+        const [adsByOrg, ...paidOrgArrays] = await Promise.all([
+          fetchAdsByOrgId(),
+          ...PAID_TIERS.map(id => fetchOrgsForSponsorship(id)),
+        ])
+        const paidOrgIds = new Set(paidOrgArrays.flat().map(o => o.id))
+        // Shuffle eligible entries so we pick two distinct orgs randomly
+        const entries = Object.entries(adsByOrg)
+          .filter(([orgIdStr, ads]) => paidOrgIds.has(Number(orgIdStr)) && ads.length > 0)
+          .sort(() => Math.random() - 0.5)
+
         if (entries.length === 0) return
 
-        const [orgIdStr, ads] = entries[Math.floor(Math.random() * entries.length)]
-        const ad = ads[Math.floor(Math.random() * ads.length)]
-
-        const orgId = Number(orgIdStr)
-
-        // Logo and tier label are optional — failures must not prevent the ad from showing
-        let logoUrl = null
-        let tierLabel = 'Featured'
-        let detailPage = false
-        try {
-          const [org, sponsorships] = await Promise.all([
-            fetchOrganization(orgId),
-            fetchSponsorshipsByOrg(orgId),
-          ])
-          logoUrl = org?.featured_media ? await fetchMediaUrl(org.featured_media) : null
-          for (const s of (sponsorships ?? [])) {
-            const tier = SPONSORSHIP_TIERS[Number(s.child_object_id)]
-            if (tier?.weight) {
-              tierLabel = tier.label
-              detailPage = tier.detailPage ?? false
-              break
+        // Try to resolve up to 2 verified paid-tier sponsors
+        async function resolveEntry([orgIdStr, ads]) {
+          const orgId = Number(orgIdStr)
+          const ad = ads[Math.floor(Math.random() * ads.length)]
+          try {
+            const [org, sponsorships] = await Promise.all([
+              fetchOrganization(orgId),
+              fetchSponsorshipsByOrg(orgId),
+            ])
+            const logoUrl = org?.featured_media ? await fetchMediaUrl(org.featured_media) : null
+            let bestWeight = -1
+            let tierLabel = null
+            let detailPage = false
+            for (const s of (sponsorships ?? [])) {
+              const tier = SPONSORSHIP_TIERS[Number(s.child_object_id)]
+              if (tier?.weight && tier.weight > bestWeight) {
+                bestWeight = tier.weight
+                tierLabel = tier.label
+                detailPage = tier.detailPage ?? false
+              }
             }
+            if (bestWeight < 0) return null // no paid tier — skip
+            return { ad, logoUrl, tierLabel, orgId, detailPage }
+          } catch {
+            return null
           }
-        } catch {
-          // continue with defaults
         }
 
-        setFeaturedAd({ ad, logoUrl, tierLabel, orgId, detailPage })
+        const results = []
+        for (const entry of entries) {
+          if (results.length >= 2) break
+          const resolved = await resolveEntry(entry)
+          if (resolved) results.push(resolved)
+        }
+
+        if (results.length > 0) setFeaturedAds(results)
       } catch (e) {
         console.warn('ScheduleScreen ad load failed:', e)
       }
@@ -151,8 +167,9 @@ export default function ScheduleScreen() {
       items.push({ type: 'session', session: s })
       if (s.acf?.session_type !== 'break') {
         sessionCount++
-        if (sessionCount % 3 === 0 && featuredAd) {
-          items.push({ type: 'ad', ...featuredAd })
+        if (sessionCount % 3 === 0 && featuredAds.length > 0) {
+          const adData = featuredAds[(sessionCount / 3 - 1) % featuredAds.length]
+          items.push({ type: 'ad', ...adData })
         }
       }
     })
@@ -221,28 +238,45 @@ export default function ScheduleScreen() {
           </div>
         )}
 
-        {!loading && activeTab === 'By Time' && byTime?.map(({ dateKey, dateLabel, timeGroups }) => (
-          <div key={dateKey}>
-            <DayHeader label={dateLabel} />
-            {timeGroups.map(([time, group]) => (
-              <div key={time} style={{ marginBottom: 4 }}>
-                <div style={styles.timeHeading}>{time}</div>
-                {group.map(s =>
-                  s.acf?.session_type === 'break' ? (
-                    <BreakCard key={s.id} session={s} />
-                  ) : (
-                    <SessionCard
-                      key={s.id}
-                      session={s}
-                      isBookmarked={isBookmarked(s.id)}
-                      onBookmark={toggle}
-                    />
-                  )
-                )}
-              </div>
-            ))}
-          </div>
-        ))}
+        {!loading && activeTab === 'By Time' && (() => {
+          let timeGroupIndex = 0
+          return byTime?.map(({ dateKey, dateLabel, timeGroups }) => (
+            <div key={dateKey}>
+              <DayHeader label={dateLabel} />
+              {timeGroups.map(([time, group]) => {
+                const groupIdx = timeGroupIndex++
+                const showAd = (groupIdx + 1) % 3 === 0 && featuredAds.length > 0
+                const adData = showAd ? featuredAds[Math.floor((groupIdx + 1) / 3 - 1) % featuredAds.length] : null
+                return (
+                  <div key={time} style={{ marginBottom: 4 }}>
+                    <div style={styles.timeHeading}>{time}</div>
+                    {group.map(s =>
+                      s.acf?.session_type === 'break' ? (
+                        <BreakCard key={s.id} session={s} />
+                      ) : (
+                        <SessionCard
+                          key={s.id}
+                          session={s}
+                          isBookmarked={isBookmarked(s.id)}
+                          onBookmark={toggle}
+                        />
+                      )
+                    )}
+                    {adData && (
+                      <SponsorAdCard
+                        ad={adData.ad}
+                        logoUrl={adData.logoUrl}
+                        tierLabel={adData.tierLabel}
+                        orgId={adData.orgId}
+                        detailPage={adData.detailPage}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ))
+        })()}
 
         {!loading && activeTab !== 'By Time' && buildAllList().map((item, i) =>
           item.type === 'date' ? (

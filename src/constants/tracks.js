@@ -21,9 +21,9 @@ export const TRACKS = {
     text: '#5B0A52',
     dot: '#7C0770',
   },
-  'art-collective-courage': {
+  'art-poster-showcase': {
     id: 115,
-    name: 'Art/Collective Courage',
+    name: 'Art & Poster Showcase',
     bg: '#FFF4E0',
     text: '#8B5E04',
     dot: '#D97706',
@@ -34,6 +34,13 @@ export const TRACKS = {
     bg: '#E0F7FA',
     text: '#0E6E88',
     dot: '#0891B2',
+  },
+  'collective-courage': {
+    id: 117,
+    name: 'Collective Courage',
+    bg: '#FCFBE5',
+    text: '#777009',
+    dot: '#777009',
   },
 }
 

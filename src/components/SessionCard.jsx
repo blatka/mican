@@ -5,9 +5,14 @@ import { roomName } from '../constants/rooms.js'
 import { formatTime } from '../utils/time.js'
 import { decodeHtml } from '../utils/html.js'
 
+function stripHtml(html) {
+  return (html ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
+}
+
 export default function SessionCard({ session, isBookmarked, onBookmark }) {
   const navigate = useNavigate()
-  const { id, title, acf = {}, session_tracks = [] } = session
+  const { id, title, acf = {}, session_tracks = [], excerpt } = session
+  const description = stripHtml(excerpt?.rendered)
   const timeLabel = acf.session_time_start
     ? `${formatTime(acf.session_time_start)} - ${formatTime(acf.session_time_end)}`
     : ''
@@ -34,7 +39,12 @@ export default function SessionCard({ session, isBookmarked, onBookmark }) {
         {decodeHtml(title.rendered)}
       </div>
 
-      {/* Line 3: room + bookmark */}
+      {/* Line 3: description */}
+      {description && (
+        <div style={styles.description}>{description}</div>
+      )}
+
+      {/* Line 4: room + bookmark */}
       <div style={styles.row}>
         <span style={styles.meta}>
           {acf.room_location && (
@@ -95,6 +105,18 @@ const styles = {
     color: '#0D1117',
     lineHeight: 1.35,
     margin: '5px 0',
+  },
+  description: {
+    fontFamily: 'Montserrat, sans-serif',
+    fontWeight: 400,
+    fontSize: 12,
+    color: '#5A6272',
+    lineHeight: 1.5,
+    marginBottom: 5,
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
   },
   bookmark: {
     padding: 2,
