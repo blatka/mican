@@ -5,14 +5,11 @@ import { roomName } from '../constants/rooms.js'
 import { formatTime } from '../utils/time.js'
 import { decodeHtml } from '../utils/html.js'
 
-function stripHtml(html) {
-  return (html ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
-}
 
 export default function SessionCard({ session, isBookmarked, onBookmark }) {
   const navigate = useNavigate()
-  const { id, title, acf = {}, session_tracks = [], excerpt } = session
-  const description = stripHtml(excerpt?.rendered)
+  const { id, title, acf = {}, session_tracks = [] } = session
+  const description = acf.note ?? ''
   const timeLabel = acf.session_time_start
     ? `${formatTime(acf.session_time_start)} - ${formatTime(acf.session_time_end)}`
     : ''

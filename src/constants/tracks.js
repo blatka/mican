@@ -36,7 +36,7 @@ export const TRACKS = {
     dot: '#0891B2',
   },
   'collective-courage': {
-    id: 117,
+    id: 140,
     name: 'Collective Courage',
     bg: '#FCFBE5',
     text: '#777009',

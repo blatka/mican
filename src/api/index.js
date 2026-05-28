@@ -22,9 +22,9 @@ export function fetchSession(id) {
 
 export function fetchSessions() {
   return pcache('sessions', async () => {
-    const data = await get('/sessions', { per_page: 200 })
-    return data
-      .filter(s => s.acf?.session_time_start && (s.session_tracks?.length > 0 || s.acf?.session_type === 'break'))
+    const all = await get('/sessions', { per_page: 100 })
+    return all
+      .filter(s => s.acf?.session_time_start)
       .sort((a, b) => {
         const da = a.acf.session_date ?? ''
         const db = b.acf.session_date ?? ''
