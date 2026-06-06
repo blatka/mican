@@ -11,6 +11,7 @@ export default function SponsorAdPage() {
   const [ad, setAd] = useState(null)
   const [orgName, setOrgName] = useState('')
   const [logoUrl, setLogoUrl] = useState(null)
+  const [photoUrl, setPhotoUrl] = useState(null)
   const [tierLabel, setTierLabel] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -41,6 +42,12 @@ export default function SponsorAdPage() {
             const tier = SPONSORSHIP_TIERS[Number(s.child_object_id)]
             if (tier?.weight) { setTierLabel(tier.label); break }
           }
+        }
+
+        // Ad feature image
+        if (data.meta?.ad_image) {
+          const url = await fetchMediaUrl(Number(data.meta.ad_image))
+          setPhotoUrl(url)
         }
       } catch (e) {
         console.warn('SponsorAdPage load failed:', e)
@@ -84,12 +91,17 @@ export default function SponsorAdPage() {
 
               {/* Initiative headline — bold, left-aligned */}
               {ad.meta?.ad_headline && (
-                <div style={styles.adHeadline}>{ad.meta.ad_headline}</div>
+                <div style={styles.adHeadline}>{decodeHtml(ad.meta.ad_headline)}</div>
               )}
 
               {/* Body text */}
               {ad.meta?.ad_text_1 && (
-                <p style={styles.bodyText}>{ad.meta.ad_text_1}</p>
+                <p style={styles.bodyText}>{decodeHtml(ad.meta.ad_text_1)}</p>
+              )}
+
+              {/* Feature image */}
+              {photoUrl && (
+                <img src={photoUrl} alt="" style={styles.photo} />
               )}
 
               {ad.meta?.ad_cta_url && (
@@ -99,7 +111,7 @@ export default function SponsorAdPage() {
                   rel="noopener noreferrer"
                   style={styles.ctaBtn}
                 >
-                  {ad.meta.ad_cta_label || 'VISIT WEBSITE'}
+                  {decodeHtml(ad.meta.ad_cta_label || 'VISIT WEBSITE')}
                 </a>
               )}
             </div>
@@ -181,6 +193,12 @@ const styles = {
     textAlign: 'left',
     width: '100%',
     margin: 0,
+  },
+  photo: {
+    width: '100%',
+    height: 'auto',
+    objectFit: 'contain',
+    borderRadius: 10,
   },
   ctaBtn: {
     display: 'block',
