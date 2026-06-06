@@ -42,6 +42,13 @@ export const TRACKS = {
     text: '#777009',
     dot: '#777009',
   },
+  'after-actions': {
+    id: 143,
+    name: 'After Actions',
+    bg: '#FFDFD6',
+    text: '#965539',
+    dot: '#965539',
+  },
 }
 
 // Keyed by taxonomy ID for quick reverse lookup

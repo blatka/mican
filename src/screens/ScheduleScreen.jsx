@@ -8,6 +8,7 @@ import { useBookmarks } from '../hooks/useBookmarks.js'
 import { TRACK_BY_ID, TRACKS } from '../constants/tracks.js'
 import { SPONSORSHIP_TIERS, PAID_TIERS } from '../constants/sponsors.js'
 import { formatTime, formatDate } from '../utils/time.js'
+import { roomName } from '../constants/rooms.js'
 import { decodeHtml } from '../utils/html.js'
 import { Bookmark } from 'lucide-react'
 
@@ -19,10 +20,12 @@ function BreakCard({ session }) {
   const timeLabel = acf.session_time_start
     ? `${formatTime(acf.session_time_start)}${acf.session_time_end ? ` – ${formatTime(acf.session_time_end)}` : ''}`
     : null
+  const room = acf.room_location ? roomName(acf.room_location) : null
   return (
     <div style={styles.breakCard}>
       {timeLabel && <span style={styles.breakTime}>{timeLabel}</span>}
       <span style={styles.breakText}>{title}</span>
+      {room && <span style={styles.breakRoom}>{room}</span>}
     </div>
   )
 }
@@ -418,5 +421,12 @@ const styles = {
     color: '#5A6272',
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
+  },
+  breakRoom: {
+    fontFamily: 'Montserrat, sans-serif',
+    fontWeight: 600,
+    fontSize: 11,
+    color: '#9CA3AF',
+    letterSpacing: '0.03em',
   },
 }
