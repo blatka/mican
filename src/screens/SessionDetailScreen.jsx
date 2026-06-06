@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Clock, MapPin, Bookmark, ChevronLeft, Heart } from 'lucide-react'
 import TrackBadge from '../components/TrackBadge.jsx'
-import { fetchSession, fetchPerson, fetchMediaUrls, fetchMediaUrl, fetchAdsByOrgId, fetchOrgsForSponsorship, fetchSponsorshipsByOrg, fetchOrganization } from '../api/index.js'
+import { fetchSession, fetchPerson, fetchMediaUrls, fetchMediaUrl, fetchAdsByOrgId, fetchOrgsForSponsorship, fetchSponsorshipsByOrg, fetchOrganization, pickAd } from '../api/index.js'
 import { useBookmarks } from '../hooks/useBookmarks.js'
 import { roomName } from '../constants/rooms.js'
 import { formatTime } from '../utils/time.js'
 import { decodeHtml } from '../utils/html.js'
 import { TRACK_BY_ID } from '../constants/tracks.js'
 import { SPONSORSHIP_TIERS } from '../constants/sponsors.js'
+import { trackSponsorImpression } from '../utils/analytics.js'
 
 const NONPROFIT_TIER_ID = 8979
 
@@ -130,7 +131,10 @@ export default function SessionDetailScreen() {
         setSpeakerRoles(roleMap)
 
         // Pick a random paid ad, then look up its tier with one targeted jet-rel call
-        const paidOrgs = Object.entries(adsByOrg).filter(([, ads]) => ads.length > 0)
+        const nonprofitOrgIds = new Set(nonprofitOrgs.map(o => o.id))
+        const paidOrgs = Object.entries(adsByOrg).filter(([orgIdStr, ads]) =>
+          ads.length > 0 && !nonprofitOrgIds.has(Number(orgIdStr))
+        )
         let pickedAd = null
         let pickedAdOrgId = null
         let pickedAdDetailPage = false
@@ -160,7 +164,7 @@ export default function SessionDetailScreen() {
 
         // Pick 2 random nonprofits
         const shuffled = [...nonprofitOrgs].sort(() => Math.random() - 0.5)
-        const pickedNonprofits = shuffled.slice(0, 2)
+        const pickedNonprofits = shuffled.slice(0, 3)
 
         // Phase 3: batch all media fetches at once
         const speakerPhotoIds = people
@@ -184,6 +188,7 @@ export default function SessionDetailScreen() {
           name: decodeHtml(o.title?.rendered),
           logoUrl: o.featured_media ? (mediaMap[o.featured_media] ?? null) : null,
           websiteUrl: o.meta?.organization_link ?? null,
+          ad: pickAd(adsByOrg, o.id),
         }))
 
         const resolvedAdImageUrl = adLogoMediaId ? (mediaMap[adLogoMediaId] ?? null) : null
@@ -209,8 +214,10 @@ export default function SessionDetailScreen() {
           setAdDetailPage(pickedAdDetailPage)
           setAdTierLabel(pickedAdTierLabel)
           setAdImageUrl(resolvedAdImageUrl)
+          trackSponsorImpression(pickedAdOrgId, decodeHtml(pickedAdOrg?.title?.rendered ?? ''), pickedAdTierLabel, 'session_featured')
         }
         setNonprofits(resolvedNonprofits)
+        resolvedNonprofits.forEach(n => trackSponsorImpression(n.id, n.name, 'Nonprofit Partner', 'session_nonprofit'))
 
       } catch (e) {
         console.warn('SessionDetail load failed:', e)
@@ -352,10 +359,10 @@ export default function SessionDetailScreen() {
               <div
                 key={org.id}
                 style={styles.nonprofitRow}
-                onClick={() => org.websiteUrl && window.open(org.websiteUrl, '_blank', 'noopener,noreferrer')}
-                role={org.websiteUrl ? 'button' : undefined}
-                tabIndex={org.websiteUrl ? 0 : undefined}
-                onKeyDown={e => e.key === 'Enter' && org.websiteUrl && window.open(org.websiteUrl, '_blank', 'noopener,noreferrer')}
+                onClick={() => org.ad ? navigate(`/sponsor-ad/${org.ad.id}`) : org.websiteUrl && window.open(org.websiteUrl, '_blank', 'noopener,noreferrer')}
+                role={org.ad || org.websiteUrl ? 'button' : undefined}
+                tabIndex={org.ad || org.websiteUrl ? 0 : undefined}
+                onKeyDown={e => e.key === 'Enter' && (org.ad ? navigate(`/sponsor-ad/${org.ad.id}`) : org.websiteUrl && window.open(org.websiteUrl, '_blank', 'noopener,noreferrer'))}
               >
                 <div style={styles.nonprofitLogo}>
                   {org.logoUrl
@@ -364,8 +371,8 @@ export default function SessionDetailScreen() {
                   }
                 </div>
                 <div style={styles.nonprofitName}>{org.name}</div>
-                {org.websiteUrl && (
-                  <span style={styles.nonprofitCta}>Visit ›</span>
+                {(org.ad || org.websiteUrl) && (
+                  <span style={styles.nonprofitCta}>{org.ad ? 'View' : 'Visit'} ›</span>
                 )}
               </div>
             ))}

@@ -1,22 +1,31 @@
 import { useNavigate } from 'react-router-dom'
 
 // Inline ad card injected into the session list every 3 sessions
-export default function SponsorAdCard({ ad, logoUrl, tierLabel, orgId, detailPage }) {
+export default function SponsorAdCard({ ad, logoUrl, tierLabel, orgId, detailPage, orgName, websiteUrl }) {
   const navigate = useNavigate()
-  if (!ad) return null
+  if (!ad && !orgName && !logoUrl) return null
 
-  const { meta = {}, title } = ad
-  const destination = detailPage && orgId
-    ? () => navigate(`/sponsor-detail/${orgId}`)
-    : () => navigate(`/sponsor-ad/${ad.id}`)
+  const meta = ad?.meta ?? {}
+
+  function handleClick() {
+    if (ad) {
+      detailPage ? navigate(`/sponsor-detail/${orgId}`) : navigate(`/sponsor-ad/${ad.id}`)
+    } else if (websiteUrl) {
+      window.open(websiteUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const displayName = meta.ad_headline || orgName || ad?.title?.rendered || ''
+
+  const isClickable = !!(ad || websiteUrl)
 
   return (
     <div
       style={styles.card}
-      onClick={destination}
-      role="button"
-      tabIndex={0}
-      onKeyDown={e => e.key === 'Enter' && destination()}
+      onClick={isClickable ? handleClick : undefined}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={isClickable ? e => e.key === 'Enter' && handleClick() : undefined}
     >
       <div style={styles.header}>
         <span style={styles.tierLabel}>{tierLabel ? `${tierLabel.toUpperCase()} SPONSOR` : 'FEATURED SPONSOR'}</span>
@@ -25,15 +34,17 @@ export default function SponsorAdCard({ ad, logoUrl, tierLabel, orgId, detailPag
         {logoUrl && (
           <img
             src={logoUrl}
-            alt={meta.ad_headline || title?.rendered || ''}
+            alt={displayName}
             style={styles.logo}
           />
         )}
-        <div style={styles.name}>{meta.ad_headline || title?.rendered}</div>
+        <div style={styles.name}>{displayName}</div>
         {meta.ad_text_1 && (
           <div style={styles.tagline}>{meta.ad_text_1.slice(0, 80)}{meta.ad_text_1.length > 80 ? '...' : ''}</div>
         )}
-        <button style={styles.cta}>LEARN MORE</button>
+        {isClickable && (
+          <button style={styles.cta}>{ad ? 'LEARN MORE' : 'VISIT WEBSITE'}</button>
+        )}
       </div>
     </div>
   )

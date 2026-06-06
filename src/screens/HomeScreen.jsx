@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Calendar, MapPin, Share } from 'lucide-react'
 import { fetchAdsByOrgId, fetchOrgsForSponsorship, fetchMediaUrl, pickAd } from '../api/index.js'
 import { decodeHtml } from '../utils/html.js'
-import { SPONSORSHIP_TIERS, DISPLAYED_TIERS } from '../constants/sponsors.js'
+import { trackSponsorImpression } from '../utils/analytics.js'
+import { SPONSORSHIP_TIERS, HOME_TIERS } from '../constants/sponsors.js'
 
 function useInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
@@ -59,29 +60,37 @@ export default function HomeScreen() {
   useEffect(() => {
     async function load() {
       try {
-        const adsByOrg = await fetchAdsByOrgId()
-        if (Object.keys(adsByOrg).length === 0) return
+        const [adsByOrg, ...tierOrgArrays] = await Promise.all([
+          fetchAdsByOrgId(),
+          ...HOME_TIERS.map(id => fetchOrgsForSponsorship(id)),
+        ])
 
-        // Walk tiers highest-to-lowest; collect all orgs with ads in the top occupied tier, pick randomly
-        let found = null
-        for (const sponsorshipId of DISPLAYED_TIERS) {
-          const tier = SPONSORSHIP_TIERS[sponsorshipId]
-          if (!tier.weight) continue
-          const orgs = await fetchOrgsForSponsorship(sponsorshipId)
-          const candidates = orgs.filter(org => adsByOrg[org.id]?.length)
-          if (candidates.length > 0) {
-            const org = candidates[Math.floor(Math.random() * candidates.length)]
-            found = { ad: pickAd(adsByOrg, org.id), tier, org }
-            break
+        // Pool all orgs from HOME_TIERS (deduplicated), pick one randomly
+        const seenIds = new Set()
+        const pool = []
+        for (let i = 0; i < HOME_TIERS.length; i++) {
+          for (const org of (tierOrgArrays[i] ?? [])) {
+            if (seenIds.has(org.id)) continue
+            seenIds.add(org.id)
+            pool.push({ org, tier: SPONSORSHIP_TIERS[HOME_TIERS[i]] })
           }
         }
-        if (!found) return
+        if (pool.length === 0) return
+
+        const { org, tier } = pool[Math.floor(Math.random() * pool.length)]
+        const found = { ad: pickAd(adsByOrg, org.id), tier, org }
 
         const imageUrl = found.org.featured_media
           ? await fetchMediaUrl(found.org.featured_media)
           : null
 
         setFeaturedSponsor({ ...found, imageUrl })
+        trackSponsorImpression(
+          found.org.id,
+          decodeHtml(found.org.title?.rendered),
+          found.tier.label,
+          'home'
+        )
       } catch (e) {
         console.warn('HomeScreen sponsor load failed:', e)
       }
@@ -146,46 +155,54 @@ export default function HomeScreen() {
       </div>
 
       {/* Featured sponsor card */}
-      {featuredSponsor && (
-        <div style={{ padding: '24px 16px 0' }}>
-          <div style={styles.tierLabel}>{featuredSponsor.tier.label.toUpperCase()} SPONSOR</div>
-          <div
-            style={styles.sponsorCard}
-            onClick={() => navigate(`/sponsor-detail/${featuredSponsor.org.id}`)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={e => e.key === 'Enter' && navigate(`/sponsor-detail/${featuredSponsor.org.id}`)}
-          >
-            <div style={styles.cardHeader}>
-              {featuredSponsor.imageUrl && (
-                <div style={styles.cardLogoCircle}>
-                  <img
-                    src={featuredSponsor.imageUrl}
-                    alt={featuredSponsor.ad.meta?.ad_headline}
-                    style={styles.cardLogo}
-                  />
+      {featuredSponsor && (() => {
+        const hasAd = !!featuredSponsor.ad
+        const websiteUrl = featuredSponsor.org.meta?.organization_link ?? null
+        function handleSponsorClick() {
+          if (hasAd) navigate(`/sponsor-detail/${featuredSponsor.org.id}`)
+          else if (websiteUrl) window.open(websiteUrl, '_blank', 'noopener,noreferrer')
+        }
+        return (
+          <div style={{ padding: '24px 16px 0' }}>
+            <div style={styles.tierLabel}>{featuredSponsor.tier.label.toUpperCase()} SPONSOR</div>
+            <div
+              style={styles.sponsorCard}
+              onClick={handleSponsorClick}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => e.key === 'Enter' && handleSponsorClick()}
+            >
+              <div style={styles.cardHeader}>
+                {featuredSponsor.imageUrl && (
+                  <div style={styles.cardLogoCircle}>
+                    <img
+                      src={featuredSponsor.imageUrl}
+                      alt={decodeHtml(featuredSponsor.org.title?.rendered)}
+                      style={styles.cardLogo}
+                    />
+                  </div>
+                )}
+                <div style={styles.cardOrgName}>
+                  {decodeHtml(featuredSponsor.org.title?.rendered)}
                 </div>
-              )}
-              <div style={styles.cardOrgName}>
-                {decodeHtml(featuredSponsor.org.title?.rendered)}
+                {featuredSponsor.ad?.meta?.ad_headline && (
+                  <div style={styles.cardTagline}>
+                    {featuredSponsor.ad.meta.ad_headline}
+                  </div>
+                )}
               </div>
-              {featuredSponsor.ad.meta?.ad_headline && (
-                <div style={styles.cardTagline}>
-                  {featuredSponsor.ad.meta.ad_headline}
-                </div>
-              )}
-            </div>
-            <div style={styles.cardBody}>
-              <button
-                style={{ ...styles.learnMore, background: featuredSponsor.tier.color }}
-                onClick={e => { e.stopPropagation(); navigate(`/sponsor-detail/${featuredSponsor.org.id}`) }}
-              >
-                LEARN MORE &rsaquo;
-              </button>
+              <div style={styles.cardBody}>
+                <button
+                  style={{ ...styles.learnMore, background: featuredSponsor.tier.color }}
+                  onClick={e => { e.stopPropagation(); handleSponsorClick() }}
+                >
+                  {hasAd ? 'LEARN MORE' : 'VISIT WEBSITE'} &rsaquo;
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Footer */}
       <div style={styles.footer}>

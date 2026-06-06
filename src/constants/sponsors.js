@@ -14,3 +14,9 @@ export const DISPLAYED_TIERS = [8984, 8983, 8982, 8981, 8980, 8979]
 
 // Paid tiers only (excludes nonprofit — used for ad weighting)
 export const PAID_TIERS = [8984, 8983, 8982, 8981, 8980]
+
+// Home screen featured sponsor pool — top tiers only (no Community Pillar)
+export const HOME_TIERS = [8984, 8983, 8982, 8981]
+
+// Session feed ad pool — all paid tiers including Community Pillar
+export const FEED_TIERS = [8984, 8983, 8982, 8981, 8980]

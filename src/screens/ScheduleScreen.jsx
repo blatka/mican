@@ -3,13 +3,14 @@ import { useLocation } from 'react-router-dom'
 import SessionCard from '../components/SessionCard.jsx'
 import SponsorAdCard from '../components/SponsorAdCard.jsx'
 import TrackBadge from '../components/TrackBadge.jsx'
-import { fetchSessions, fetchAdsByOrgId, fetchMediaUrl, fetchOrganization, fetchSponsorshipsByOrg, fetchOrgsForSponsorship, pickAd } from '../api/index.js'
+import { fetchSessions, fetchAdsByOrgId, fetchMediaUrl, fetchOrgsForSponsorship, pickAd } from '../api/index.js'
 import { useBookmarks } from '../hooks/useBookmarks.js'
 import { TRACK_BY_ID, TRACKS } from '../constants/tracks.js'
-import { SPONSORSHIP_TIERS, PAID_TIERS } from '../constants/sponsors.js'
+import { SPONSORSHIP_TIERS, FEED_TIERS } from '../constants/sponsors.js'
 import { formatTime, formatDate } from '../utils/time.js'
 import { roomName } from '../constants/rooms.js'
 import { decodeHtml } from '../utils/html.js'
+import { trackSponsorImpression } from '../utils/analytics.js'
 import { Bookmark } from 'lucide-react'
 
 const MAIN_TABS = ['All', 'By Track', 'By Time', 'My Schedule']
@@ -65,54 +66,49 @@ export default function ScheduleScreen() {
     // Ad loads independently — no jet-rel, won't block the session list
     async function loadAd() {
       try {
-        const [adsByOrg, ...paidOrgArrays] = await Promise.all([
+        const [adsByOrg, ...feedOrgArrays] = await Promise.all([
           fetchAdsByOrgId(),
-          ...PAID_TIERS.map(id => fetchOrgsForSponsorship(id)),
+          ...FEED_TIERS.map(id => fetchOrgsForSponsorship(id)),
         ])
-        const paidOrgIds = new Set(paidOrgArrays.flat().map(o => o.id))
-        // Shuffle eligible entries so we pick two distinct orgs randomly
-        const entries = Object.entries(adsByOrg)
-          .filter(([orgIdStr, ads]) => paidOrgIds.has(Number(orgIdStr)) && ads.length > 0)
-          .sort(() => Math.random() - 0.5)
 
-        if (entries.length === 0) return
-
-        // Try to resolve up to 2 verified paid-tier sponsors
-        async function resolveEntry([orgIdStr, ads]) {
-          const orgId = Number(orgIdStr)
-          const ad = ads[Math.floor(Math.random() * ads.length)]
-          try {
-            const [org, sponsorships] = await Promise.all([
-              fetchOrganization(orgId),
-              fetchSponsorshipsByOrg(orgId),
-            ])
-            const logoUrl = org?.featured_media ? await fetchMediaUrl(org.featured_media) : null
-            let bestWeight = -1
-            let tierLabel = null
-            let detailPage = false
-            for (const s of (sponsorships ?? [])) {
-              const tier = SPONSORSHIP_TIERS[Number(s.child_object_id)]
-              if (tier?.weight && tier.weight > bestWeight) {
-                bestWeight = tier.weight
-                tierLabel = tier.label
-                detailPage = tier.detailPage ?? false
-              }
-            }
-            if (bestWeight < 0) return null // no paid tier — skip
-            return { ad, logoUrl, tierLabel, orgId, detailPage }
-          } catch {
-            return null
+        // Pool all unique orgs across FEED_TIERS with their tier info, then shuffle
+        const seenIds = new Set()
+        const pool = []
+        for (let i = 0; i < FEED_TIERS.length; i++) {
+          const tier = SPONSORSHIP_TIERS[FEED_TIERS[i]]
+          for (const org of (feedOrgArrays[i] ?? [])) {
+            if (seenIds.has(org.id)) continue
+            seenIds.add(org.id)
+            pool.push({ org, tier })
           }
         }
+        if (pool.length === 0) return
 
+        const shuffled = [...pool].sort(() => Math.random() - 0.5)
+
+        // Pick up to 2, fetching logo for each
         const results = []
-        for (const entry of entries) {
+        for (const { org, tier } of shuffled) {
           if (results.length >= 2) break
-          const resolved = await resolveEntry(entry)
-          if (resolved) results.push(resolved)
+          try {
+            const logoUrl = org.featured_media ? await fetchMediaUrl(org.featured_media) : null
+            const ad = pickAd(adsByOrg, org.id)
+            results.push({
+              ad,
+              logoUrl,
+              tierLabel: tier.label,
+              orgId: org.id,
+              detailPage: tier.detailPage ?? false,
+              orgName: decodeHtml(org.title?.rendered),
+              websiteUrl: org.meta?.organization_link ?? null,
+            })
+          } catch { /* skip */ }
         }
 
-        if (results.length > 0) setFeaturedAds(results)
+        if (results.length > 0) {
+          setFeaturedAds(results)
+          results.forEach(r => trackSponsorImpression(r.orgId, r.orgName, r.tierLabel, 'schedule_feed'))
+        }
       } catch (e) {
         console.warn('ScheduleScreen ad load failed:', e)
       }
@@ -272,6 +268,8 @@ export default function ScheduleScreen() {
                         tierLabel={adData.tierLabel}
                         orgId={adData.orgId}
                         detailPage={adData.detailPage}
+                        orgName={adData.orgName}
+                        websiteUrl={adData.websiteUrl}
                       />
                     )}
                   </div>
@@ -285,7 +283,7 @@ export default function ScheduleScreen() {
           item.type === 'date' ? (
             <DayHeader key={`date-${item.date}`} label={formatDate(item.date)} />
           ) : item.type === 'ad' ? (
-            <SponsorAdCard key={`ad-${i}`} ad={item.ad} logoUrl={item.logoUrl} tierLabel={item.tierLabel} orgId={item.orgId} detailPage={item.detailPage} />
+            <SponsorAdCard key={`ad-${i}`} ad={item.ad} logoUrl={item.logoUrl} tierLabel={item.tierLabel} orgId={item.orgId} detailPage={item.detailPage} orgName={item.orgName} websiteUrl={item.websiteUrl} />
           ) : item.session.acf?.session_type === 'break' ? (
             <BreakCard key={item.session.id} session={item.session} />
           ) : (

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
-import { BrowserRouter, Routes, Route, Outlet, useOutlet, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, useOutlet, useLocation, useNavigationType } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import TabBar from './components/TabBar.jsx'
 import HomeScreen from './screens/HomeScreen.jsx'
@@ -126,11 +126,13 @@ function FrozenOutlet() {
 // ── Page transition helpers ───────────────────────────────────────────────
 const TAB_PATHS = ['/', '/schedule', '/map', '/sponsors']
 
-function navDirection(from, to) {
+function navDirection(from, to, navType) {
   const fromTab = TAB_PATHS.includes(from)
   const toTab = TAB_PATHS.includes(to)
   if (fromTab && toTab) return 'fade'
   if (fromTab && !toTab) return 'forward'
+  // Both are detail pages — use browser history direction
+  if (!fromTab && !toTab) return navType === 'POP' ? 'back' : 'forward'
   return 'back'
 }
 
@@ -148,14 +150,28 @@ const pageVariants = {
 
 const pageTransition = { duration: 0.32, ease: [0.42, 0, 0.58, 1] }
 
+function usePageTracking() {
+  const location = useLocation()
+  useEffect(() => {
+    if (typeof window.gtag !== 'function') return
+    window.gtag('event', 'page_view', {
+      page_path: location.pathname,
+      page_location: window.location.href,
+    })
+  }, [location.pathname])
+}
+
 function ShellWithTabs() {
   const location = useLocation()
+  const navType = useNavigationType()
   const isHome = location.pathname === '/'
   const prevPath = useRef(location.pathname)
   const dirRef = useRef('fade')
 
+  usePageTracking()
+
   if (prevPath.current !== location.pathname) {
-    dirRef.current = navDirection(prevPath.current, location.pathname)
+    dirRef.current = navDirection(prevPath.current, location.pathname, navType)
     prevPath.current = location.pathname
   }
 
