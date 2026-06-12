@@ -1,5 +1,5 @@
 export const ROOM_NAMES = {
-  big_ten_abc: 'Big Ten ABC',
+  big_ten_abc: 'Big Ten AB',
   lincoln: 'Lincoln',
   red_cedar_ab: 'Red Cedar AB',
   '103ab_105ab': '103AB - 105AB',
