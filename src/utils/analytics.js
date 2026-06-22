@@ -16,3 +16,13 @@ export function trackSponsorImpression(orgId, name, tier, placement) {
     placement,
   })
 }
+
+export function trackSponsorClick(orgId, name, tier, placement) {
+  if (typeof window.gtag !== 'function') return
+  window.gtag('event', 'sponsor_click', {
+    sponsor_id: String(orgId),
+    sponsor_name: name,
+    sponsor_tier: tier,
+    placement,
+  })
+}

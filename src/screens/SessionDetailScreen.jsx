@@ -9,7 +9,7 @@ import { formatTime } from '../utils/time.js'
 import { decodeHtml } from '../utils/html.js'
 import { TRACK_BY_ID } from '../constants/tracks.js'
 import { SPONSORSHIP_TIERS } from '../constants/sponsors.js'
-import { trackSponsorImpression } from '../utils/analytics.js'
+import { trackSponsorImpression, trackSponsorClick } from '../utils/analytics.js'
 
 const NONPROFIT_TIER_ID = 8979
 
@@ -324,10 +324,10 @@ export default function SessionDetailScreen() {
             <div style={styles.divider} />
             <div
               style={styles.adCard}
-              onClick={() => adDetailPage && adOrgId ? navigate(`/sponsor-detail/${adOrgId}`) : navigate(`/sponsor-ad/${ad.id}`)}
+              onClick={() => { trackSponsorClick(adOrgId, ad.meta?.ad_headline ?? '', adTierLabel, 'session_featured'); adDetailPage && adOrgId ? navigate(`/sponsor-detail/${adOrgId}`) : navigate(`/sponsor-ad/${ad.id}`) }}
               role="button"
               tabIndex={0}
-              onKeyDown={e => e.key === 'Enter' && (adDetailPage && adOrgId ? navigate(`/sponsor-detail/${adOrgId}`) : navigate(`/sponsor-ad/${ad.id}`))}
+              onKeyDown={e => { if (e.key === 'Enter') { trackSponsorClick(adOrgId, ad.meta?.ad_headline ?? '', adTierLabel, 'session_featured'); adDetailPage && adOrgId ? navigate(`/sponsor-detail/${adOrgId}`) : navigate(`/sponsor-ad/${ad.id}`) } }}
             >
               <div style={styles.adHeader}>
                 <span style={styles.adLabel}>{adTierLabel ? `${adTierLabel.toUpperCase()} SPONSOR` : 'FEATURED SPONSOR'}</span>
@@ -359,10 +359,10 @@ export default function SessionDetailScreen() {
               <div
                 key={org.id}
                 style={styles.nonprofitRow}
-                onClick={() => org.ad ? navigate(`/sponsor-ad/${org.ad.id}`) : org.websiteUrl && window.open(org.websiteUrl, '_blank', 'noopener,noreferrer')}
+                onClick={() => { trackSponsorClick(org.id, org.name, 'Nonprofit Partner', 'session_nonprofit'); org.ad ? navigate(`/sponsor-ad/${org.ad.id}`) : org.websiteUrl && window.open(org.websiteUrl, '_blank', 'noopener,noreferrer') }}
                 role={org.ad || org.websiteUrl ? 'button' : undefined}
                 tabIndex={org.ad || org.websiteUrl ? 0 : undefined}
-                onKeyDown={e => e.key === 'Enter' && (org.ad ? navigate(`/sponsor-ad/${org.ad.id}`) : org.websiteUrl && window.open(org.websiteUrl, '_blank', 'noopener,noreferrer'))}
+                onKeyDown={e => { if (e.key === 'Enter') { trackSponsorClick(org.id, org.name, 'Nonprofit Partner', 'session_nonprofit'); org.ad ? navigate(`/sponsor-ad/${org.ad.id}`) : org.websiteUrl && window.open(org.websiteUrl, '_blank', 'noopener,noreferrer') } }}
               >
                 <div style={styles.nonprofitLogo}>
                   {org.logoUrl

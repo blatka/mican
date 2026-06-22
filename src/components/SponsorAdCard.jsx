@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { trackSponsorClick } from '../utils/analytics.js'
 
 // Inline ad card injected into the session list every 3 sessions
 export default function SponsorAdCard({ ad, logoUrl, tierLabel, orgId, detailPage, orgName, websiteUrl }) {
@@ -8,6 +9,7 @@ export default function SponsorAdCard({ ad, logoUrl, tierLabel, orgId, detailPag
   const meta = ad?.meta ?? {}
 
   function handleClick() {
+    trackSponsorClick(orgId, orgName || meta.ad_headline || '', tierLabel || '', 'schedule_feed')
     if (ad) {
       detailPage ? navigate(`/sponsor-detail/${orgId}`) : navigate(`/sponsor-ad/${ad.id}`)
     } else if (websiteUrl) {

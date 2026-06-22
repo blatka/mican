@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Calendar, MapPin, Share } from 'lucide-react'
 import { fetchAdsByOrgId, fetchOrgsForSponsorship, fetchMediaUrl, pickAd } from '../api/index.js'
 import { decodeHtml } from '../utils/html.js'
-import { trackSponsorImpression } from '../utils/analytics.js'
+import { trackSponsorImpression, trackSponsorClick } from '../utils/analytics.js'
 import { SPONSORSHIP_TIERS, HOME_TIERS } from '../constants/sponsors.js'
 
 function useInstallPrompt() {
@@ -159,6 +159,7 @@ export default function HomeScreen() {
         const hasAd = !!featuredSponsor.ad
         const websiteUrl = featuredSponsor.org.meta?.organization_link ?? null
         function handleSponsorClick() {
+          trackSponsorClick(featuredSponsor.org.id, decodeHtml(featuredSponsor.org.title?.rendered), featuredSponsor.tier.label, 'home')
           if (hasAd) navigate(`/sponsor-detail/${featuredSponsor.org.id}`)
           else if (websiteUrl) window.open(websiteUrl, '_blank', 'noopener,noreferrer')
         }
